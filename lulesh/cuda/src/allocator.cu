@@ -8,10 +8,10 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.   
 */
 
-#include <allocator.h>
+#include "allocator.h"
 #include <stack>
 #include <map>
-#include <vector.h>
+#include "vector.h"
 
 template< typename T >
 inline T* allocate( int size ) 

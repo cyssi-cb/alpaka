@@ -41,7 +41,7 @@ TIdx compareResult(TData* CPU_serial, TData* GPU,TIdx size){
 }
 //! A vector addition kernel.
 template <typename TIdx,typename TElem>
-class VectorAddKernel
+class MulKernel
 {
 private: 
     const TIdx csize;
@@ -51,7 +51,7 @@ private:
 
 public:
     
-    VectorAddKernel(TElem const * const MatrixA, TElem const * const MatrixB,TElem * const MatrixC, TIdx size):csize(size),A(MatrixA),B(MatrixB),C(MatrixC){};
+    MulKernel(TElem const * const MatrixA, TElem const * const MatrixB,TElem * const MatrixC, TIdx size):csize(size),A(MatrixA),B(MatrixB),C(MatrixC){};
     //! The kernel entry point.
     //!
     //! \tparam TAcc The accelerator environment to be executed on.
@@ -200,8 +200,8 @@ auto main() -> int
     alpaka::memcpy(queue, bufAccC, bufHostC,extent1D);
 
     // Instantiate the kernel function object
-    VectorAddKernel kernel(alpaka::getPtrNative(bufAccA),alpaka::getPtrNative(bufAccB),alpaka::getPtrNative(bufAccC),size);
-    //VectorAddKernel kernel(size);
+    MulKernel kernel(alpaka::getPtrNative(bufAccA),alpaka::getPtrNative(bufAccB),alpaka::getPtrNative(bufAccC),size);
+    //MulKernel kernel(size);
 
     // Create the kernel execution task.
     auto const taskKernel = alpaka::createTaskKernel<Acc>(

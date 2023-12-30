@@ -68,10 +68,8 @@ Additional BSD Notice
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-#include <alpaka/alpaka.hpp>
-#include <alpaka/example/ExampleDefaultAcc.hpp>
+
 #include "util.h"
-#include "alpaka_utils.h"
 #include "sm_utils.inl"
 #include <cuda.h>
 #include "allocator.h"
@@ -4690,44 +4688,6 @@ void VerifyAndWriteFinalOutput(Real_t elapsed_time,
 
    return ;
 }
-using Dim = alpaka::DimInt<3>;
-using Idx = std::size_t;
-using Vec =alpaka::Vec<Dim, Idx>;
-class HelloWorldKernel{
-  template<typename TAcc>
-    ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
-    {
-        using Dim = alpaka::Dim<TAcc>;
-        using Idx = alpaka::Idx<TAcc>;
-        using Vec = alpaka::Vec<Dim, Idx>;
-        using Vec1 = alpaka::Vec<alpaka::DimInt<1u>, Idx>;
-
-        // In the most cases the parallel work distibution depends
-        // on the current index of a thread and how many threads
-        // exist overall. These information can be obtained by
-        // getIdx() and getWorkDiv(). In this example these
-        // values are obtained for a global scope.
-        Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-        Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
-
-        // Map the three dimensional thread index into a
-        // one dimensional thread index space. We call it
-        // linearize the thread index.
-        Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
-
-        // Each thread prints a hello world to the terminal
-        // together with the global index of the thread in
-        // each dimension and the linearized global index.
-        // Mind, that alpaka uses the mathematical index
-        // order [z][y][x] where the last index is the fast one.
-        printf(
-            "[z:%u, y:%u, x:%u][linear:%u] Hello World\n",
-            static_cast<unsigned>(globalThreadIdx[0u]),
-            static_cast<unsigned>(globalThreadIdx[1u]),
-            static_cast<unsigned>(globalThreadIdx[2u]),
-            static_cast<unsigned>(linearizedGlobalThreadIdx[0u]));
-    }
-};
 
 int main(int argc, char *argv[])
 {
@@ -4760,9 +4720,7 @@ int main(int argc, char *argv[])
   myRank = 0;
 #endif
   cuda_init(myRank);
-  using Vec = alpaka::Vec<Dim, Idx>;
-  HelloWorldKernel kernel;
-  alpaka_utils::alpakaExecuteBaseKernel<Dim,Idx>(kernel,Vec{2,4,2},false);
+
   /* assume cube subdomain geometry for now */
   Index_t nx = atoi(argv[2]);
 
