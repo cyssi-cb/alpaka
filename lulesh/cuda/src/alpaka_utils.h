@@ -5,12 +5,6 @@ namespace alpaka_utils{
     /*
         Executes a blocking kernel object (class or struct) on the alpaka::ExampleDefaultAcc the workdiv
         can be specified through the threadsPerGrid parameter
-    */
-    template <typename Dim,typename Idx,typename kernel>
-    int alpakaExecuteBaseKernel(kernel &obj,alpaka::Vec<Dim, Idx> threadsPerGrid){
-        return alpakaExecuteBaseKernel(kernel &obj,alpaka::Vec<Dim, Idx> threadsPerGrid,true);
-    }
-    /*
         Executes a kernel object (class or struct) on the alpaka::ExampleDefaultAcc the workdiv
         can be specified through the threadsPerGrid parameter
     */
@@ -19,15 +13,15 @@ namespace alpaka_utils{
         using Acc = alpaka::ExampleDefaultAcc<Dim, Idx>;
         //std::cout << "Using alpaka accelerator: " << alpaka::getAccName<Acc>() << std::endl;
         if(blocking){
-            #define Queue alpaka::Queue<Acc, alpaka::Blocking>
+            #define Queue_ alpaka::Queue<Acc, alpaka::Blocking>
         }
         else {
-            #define Queue alpaka::Queue<Acc, alpaka::NonBlocking>
+            #define Queue_ alpaka::Queue<Acc, alpaka::NonBlocking>
         }
         
         auto const platformAcc = alpaka::Platform<Acc>{};
         auto const devAcc = alpaka::getDevByIdx(platformAcc, 0);
-        Queue queue(devAcc);
+        Queue_ queue(devAcc);
         auto const elementsPerThread = alpaka::Vec<Dim, Idx>::all(static_cast<Idx>(1));
         using WorkDiv = alpaka::WorkDivMembers<Dim, Idx>;
         WorkDiv const workDiv = alpaka::getValidWorkDiv<Acc>(

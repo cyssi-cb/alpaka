@@ -72,6 +72,7 @@ Additional BSD Notice
 #include <alpaka/example/ExampleDefaultAcc.hpp>
 #include "util.h"
 #include "alpaka_utils.h"
+#include "lulesh_kernels.h"
 #include "sm_utils.inl"
 #include <cuda.h>
 #include "allocator.h"
@@ -393,6 +394,22 @@ void terminate_gracefully(void)
 bool InitializeFields(Domain* domain)
 {
  /* Basic Field Initialization */
+ #ifdef ALPAKA
+  domain->ss.fill(domain->ss.size(),0.);
+  domain->e.fill(domain->e.size(),0.);
+  domain->p.fill(domain->e.size(),0.);
+  domain->q.fill(domain->e.size(),0.);
+  domain->v.fill(domain->e.size(),0.);
+  domain->xd.fill(domain->e.size(),0.);
+  domain->yd.fill(domain->e.size(),0.);
+  domain->zd.fill(domain->e.size(),0.);
+  domain->xdd.fill(domain->e.size(),0.);
+  domain->ydd.fill(domain->e.size(),0.);
+  domain->zdd.fill(domain->e.size(),0.);
+  domain->nodalMass.fill(domain->e.size(),0.);
+  #else
+
+
  thrust::fill(domain->ss.begin(),domain->ss.end(),0.);
  thrust::fill(domain->e.begin(),domain->e.end(),0.);
  thrust::fill(domain->p.begin(),domain->p.end(),0.);
@@ -408,6 +425,7 @@ bool InitializeFields(Domain* domain)
  thrust::fill(domain->zdd.begin(),domain->zdd.end(),0.);
 
  thrust::fill(domain->nodalMass.begin(),domain->nodalMass.end(),0.);
+ #endif
 
 return true;
 }
@@ -684,7 +702,7 @@ void Domain::BuildMesh(Int_t nx, Int_t edgeNodes, Int_t edgeElems, Int_t domNode
     nidx += edgeNodes ;
   }
 
-  nodelist = nodelist_h;
+  nodelist = nodelist_h;//copies host vector to device vector (throw thrust)
 }
 
 
@@ -2688,125 +2706,6 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
    return ;
 }
 
-/*
-static inline
-void CalcVolumeForceForElems_warp_per_4cell(const Real_t hgcoef,Domain *domain)
-{
-  // We're gonna map one warp per 4 cells, i.e. one thread per vertex
-
-    Index_t numElem = domain->numElem ;
-    Index_t padded_numElem = domain->padded_numElem;
-
-#ifdef DOUBLE_PRECISION
-    Vector_d<Real_t>* fx_elem = Allocator< Vector_d<Real_t> >::allocate(padded_numElem*8);
-    Vector_d<Real_t>* fy_elem = Allocator< Vector_d<Real_t> >::allocate(padded_numElem*8);
-    Vector_d<Real_t>* fz_elem = Allocator< Vector_d<Real_t> >::allocate(padded_numElem*8);
-#else
-    thrust::fill(domain->fx.begin(),domain->fx.end(),0.);
-    thrust::fill(domain->fy.begin(),domain->fy.end(),0.);
-    thrust::fill(domain->fz.begin(),domain->fz.end(),0.);
-#endif
-
-    const int warps_per_cta = 2;
-    const int cta_size = warps_per_cta * 32;
-    int num_threads = numElem*8;
-
-    int dimGrid = PAD_DIV(num_threads,cta_size);
-
-    bool hourg_gt_zero = hgcoef > Real_t(0.0);
-    if (hourg_gt_zero)
-    {
-      CalcVolumeForceForElems_kernel_warp_per_4cell<true, cta_size> <<<dimGrid,cta_size>>>
-      ( domain->volo.raw(), 
-        domain->v.raw(), 
-        domain->p.raw(), 
-        domain->q.raw(),
-	      hgcoef, numElem, padded_numElem,
-        domain->nodelist.raw(), 
-        domain->ss.raw(), 
-        domain->elemMass.raw(),
-        domain->x.raw(), 
-        domain->y.raw(), 
-        domain->z.raw(), 
-        domain->xd.raw(), 
-        domain->yd.raw(), 
-        domain->zd.raw(), 
-        //domain->tex_x, domain->tex_y, domain->tex_z, domain->tex_xd, domain->tex_yd, domain->tex_zd,
-#ifdef DOUBLE_PRECISION
-        fx_elem->raw(), 
-        fy_elem->raw(), 
-        fz_elem->raw() ,
-#else
-        domain->fx.raw(),
-        domain->fy.raw(),
-        domain->fz.raw(),
-#endif
-        domain->bad_vol_h,
-        num_threads
-      );
-    }
-    else
-    {
-      CalcVolumeForceForElems_kernel_warp_per_4cell<false, cta_size> <<<dimGrid,cta_size>>>
-      ( domain->volo.raw(),
-        domain->v.raw(), 
-        domain->p.raw(), 
-        domain->q.raw(),
-	      hgcoef, numElem, padded_numElem,
-        domain->nodelist.raw(), 
-        domain->ss.raw(), 
-        domain->elemMass.raw(),
-        domain->x.raw(), 
-        domain->y.raw(), 
-        domain->z.raw(), 
-        domain->xd.raw(), 
-        domain->yd.raw(), 
-        domain->zd.raw(), 
-#ifdef DOUBLE_PRECISION
-        fx_elem->raw(), 
-        fy_elem->raw(), 
-        fz_elem->raw() ,
-#else
-        domain->fx.raw(),
-        domain->fy.raw(),
-        domain->fz.raw(),
-#endif
-        domain->bad_vol_h,
-        num_threads
-      );
-    }
-
-#ifdef DOUBLE_PRECISION
-    num_threads = domain->numNode;
-
-    // Launch boundary nodes first
-    dimGrid= PAD_DIV(num_threads,cta_size);
-
-    AddNodeForcesFromElems_kernel<<<dimGrid,cta_size>>>
-    ( domain->numNode,
-      domain->padded_numNode,
-      domain->nodeElemCount.raw(),
-      domain->nodeElemStart.raw(),
-      domain->nodeElemCornerList.raw(),
-      fx_elem->raw(),
-      fy_elem->raw(),
-      fz_elem->raw(),
-      domain->fx.raw(),
-      domain->fy.raw(),
-      domain->fz.raw(),
-      num_threads
-    );
-    //cudaDeviceSynchronize();
-    //cudaCheckError();
-
-    Allocator<Vector_d<Real_t> >::free(fx_elem,padded_numElem*8);
-    Allocator<Vector_d<Real_t> >::free(fy_elem,padded_numElem*8);
-    Allocator<Vector_d<Real_t> >::free(fz_elem,padded_numElem*8);
-
-#endif // ifdef DOUBLE_PRECISION
-   return ;
-}
-*/
 
 static inline
 void CalcVolumeForceForElems(Domain* domain)
@@ -4780,7 +4679,7 @@ int main(int argc, char *argv[])
   // TODO: modify this constructor to account for new fields
   // TODO: setup communication buffers
   locDom = NewDomain(argv, numRanks, col, row, plane, nx, side, structured, nr, balance, cost); 
-
+/*
 #if USE_MPI   
    // copy to the host for mpi transfer
    locDom->h_nodalMass = locDom->nodalMass;
@@ -4805,7 +4704,7 @@ int main(int argc, char *argv[])
 
   cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
-  /* timestep to solution */
+  // timestep to solution 
   int its=0;
 
   if (myRank == 0) {
@@ -4875,7 +4774,7 @@ int main(int argc, char *argv[])
 #if USE_MPI
    MPI_Finalize() ;
 #endif
-
+*/
   return 0 ;
 }
 

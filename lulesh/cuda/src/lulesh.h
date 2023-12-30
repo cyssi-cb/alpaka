@@ -31,11 +31,13 @@ typedef double       real8 ;
 
 typedef int    Index_t ; /* array subscript and loop index */
 typedef int    Int_t ;   /* integer representation */
-#ifdef DOUBLE_PRECISION
-typedef real8  Real_t ;  /* floating point representation */
-#else
-typedef real4  Real_t ;  /* floating point representation */
-#endif
+#define Real_t double
+//ifdef DOUBLE_PRECISION
+//typedef real8  Real_t ;  /* floating point representation */
+//#else
+//typedef real4  Real_t ;  /* floating point representation */
+//#endif
+
 
 class Domain
 {
