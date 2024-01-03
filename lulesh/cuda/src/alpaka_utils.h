@@ -7,7 +7,8 @@ namespace alpaka_utils{
         can be specified through the threadsPerGrid parameter
     */
     template <typename Dim,typename Idx,typename kernel>
-    int alpakaExecuteBaseKernel(kernel &obj,alpaka::Vec<Dim, Idx> threadsPerGrid){
+    auto alpakaExecuteBaseKernel(kernel &obj,alpaka::Vec<Dim, Idx> threadsPerGrid) -> int 
+    {
         return alpakaExecuteBaseKernel(kernel &obj,alpaka::Vec<Dim, Idx> threadsPerGrid,true);
     }
     /*
@@ -15,7 +16,8 @@ namespace alpaka_utils{
         can be specified through the threadsPerGrid parameter
     */
     template <typename Dim,typename Idx,typename kernel>
-    int alpakaExecuteBaseKernel(const kernel &obj,const alpaka::Vec<Dim, Idx> threadsPerGrid, const bool blocking){
+    auto alpakaExecuteBaseKernel(const kernel &obj,const alpaka::Vec<Dim, Idx> threadsPerGrid, const bool blocking) -> int
+    {
         using Acc = alpaka::ExampleDefaultAcc<Dim, Idx>;
         //std::cout << "Using alpaka accelerator: " << alpaka::getAccName<Acc>() << std::endl;
         if(blocking){
