@@ -4656,7 +4656,7 @@ int main(int argc, char *argv[])
   #ifdef TEST
 
     if(test::test_main()){
-      std::cout<<" There were failed Test << ABORTING LULESH >> "<<std::endl;
+      std::cout<<" Some Tests failed << ABORTING LULESH >> "<<std::endl;
       return 1;
     }
   #endif
