@@ -2668,8 +2668,9 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     {
       std::cout<<"2669"<<std::endl;
       
-#ifdef ALPAKA 
-        lulesh_port_kernels::CalcVolumeForceForElems_kernel kernel
+//#ifdef ALPAKA 
+//TODO fix and create first kernel using alpaka_utils.h and lulesh_kernels.h currently not compiling
+        /*lulesh_port_kernels::CalcVolumeForceForElems_kernel kernel
         (domain->volo.raw(),
         domain->v.raw(), 
         domain->p.raw(), 
@@ -2691,8 +2692,8 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
         domain->bad_vol_h,
         num_threads
       );
-      std::cout<<"2694"<<std::endl;
-#else
+      std::cout<<"2694"<<std::endl;*/
+//#else
         CalcVolumeForceForElems_kernel<false> <<<dimGrid,block_size>>>
       ( domain->volo.raw(),
         domain->v.raw(), 
@@ -2717,7 +2718,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
         num_threads
       );
     }
-#endif
+//#endif //endif ALPAKA
 
 #ifdef DOUBLE_PRECISION
     num_threads = domain->numNode;
