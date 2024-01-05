@@ -1121,12 +1121,12 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
   domain->eosvmin =  Real_t(1.0e-9) ;
 
   domain->refdens =  Real_t(1.0) ;
-
+  std::cout<<"1124"<<std::endl;
   /* initialize field data */
   Vector_h<Real_t> nodalMass_h(domNodes);
   Vector_h<Real_t> volo_h(domElems);
   Vector_h<Real_t> elemMass_h(domElems);
-  
+std::cout<<"1129"<<std::endl;
   for (Index_t i=0; i<domElems; ++i) {
      Real_t x_local[8], y_local[8], z_local[8] ;
      for( Index_t lnode=0 ; lnode<8 ; ++lnode )
@@ -1146,7 +1146,7 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
         nodalMass_h[gnode] += volume / Real_t(8.0) ;
      }
   }
-
+  std::cout<<"1149"<<std::endl;
   domain->nodalMass = nodalMass_h;
   domain->volo = volo_h;
   domain->elemMass= elemMass_h;
@@ -1163,19 +1163,26 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
   if (domain->m_rowLoc + domain->m_colLoc + domain->m_planeLoc == 0) {
      // Dump into the first zone (which we know is in the corner)
      // of the domain that sits at the origin
-       domain->e[0] = einit;
+     std::cout<<"1166"<<std::endl;
+    #ifdef ALPAKA
+    Real_t arg[] = {einit};
+    domain->e.changeValue(0,1,&arg[0]);
+    #else
+    domain->e[0] = einit;
+    #endif
+    std::cout<<"1168"<<std::endl;
   }
-
+  std::cout<<"1169"<<std::endl;
   //set initial deltatime base on analytic CFL calculation
   domain->deltatime_h = (.5*cbrt(domain->volo[0]))/sqrt(2*einit);
-
+  std::cout<<"1179"<<std::endl;
   domain->cost = cost;
   domain->regNumList.resize(domain->numElem) ;  // material indexset
   domain->regElemlist.resize(domain->numElem) ;  // material indexset
   domain->regCSR.resize(nr);
   domain->regReps.resize(nr);
   domain->regSorted.resize(nr);
-
+  std::cout<<"1178"<<std::endl;
   // Setup region index sets. For now, these are constant sized
   // throughout the run, but could be changed every cycle to 
   // simulate effects of ALE on the lagrange solver
@@ -2611,6 +2618,7 @@ void CalcVolumeForceForElems_kernel_warp_per_4cell(
 static inline
 void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
 {
+    std::cout<<" here"<<std::endl;
     Index_t numElem = domain->numElem ;
     Index_t padded_numElem = domain->padded_numElem;
 
@@ -2632,6 +2640,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     bool hourg_gt_zero = hgcoef > Real_t(0.0);
     if (hourg_gt_zero)
     {
+      std::cout<<"2643"<<std::endl;
       CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size>>>
       ( domain->volo.raw(), 
         domain->v.raw(), 
@@ -2657,7 +2666,34 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     }
     else
     {
-      CalcVolumeForceForElems_kernel<false> <<<dimGrid,block_size>>>
+      std::cout<<"2669"<<std::endl;
+      
+#ifdef ALPAKA 
+        lulesh_port_kernels::CalcVolumeForceForElems_kernel kernel
+        (domain->volo.raw(),
+        domain->v.raw(), 
+        domain->p.raw(), 
+        domain->q.raw(),
+	      hgcoef, numElem, padded_numElem,
+        domain->nodelist.raw(), 
+        domain->ss.raw(), 
+        domain->elemMass.raw(),
+        domain->x.raw(), domain->y.raw(), domain->z.raw(), domain->xd.raw(), domain->yd.raw(), domain->zd.raw(),
+  #ifdef DOUBLE_PRECISION
+        fx_elem->raw(), 
+        fy_elem->raw(), 
+        fz_elem->raw() ,
+  #else
+        domain->fx.raw(),
+        domain->fy.raw(),
+        domain->fz.raw(),
+  #endif
+        domain->bad_vol_h,
+        num_threads
+      );
+      std::cout<<"2694"<<std::endl;
+#else
+        CalcVolumeForceForElems_kernel<false> <<<dimGrid,block_size>>>
       ( domain->volo.raw(),
         domain->v.raw(), 
         domain->p.raw(), 
@@ -2667,6 +2703,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
         domain->ss.raw(), 
         domain->elemMass.raw(),
         domain->x.raw(), domain->y.raw(), domain->z.raw(), domain->xd.raw(), domain->yd.raw(), domain->zd.raw(),
+
 #ifdef DOUBLE_PRECISION
         fx_elem->raw(), 
         fy_elem->raw(), 
@@ -2680,6 +2717,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
         num_threads
       );
     }
+#endif
 
 #ifdef DOUBLE_PRECISION
     num_threads = domain->numNode;
@@ -4695,28 +4733,27 @@ int main(int argc, char *argv[])
   // TODO: modify this constructor to account for new fields
   // TODO: setup communication buffers
   locDom = NewDomain(argv, numRanks, col, row, plane, nx, side, structured, nr, balance, cost); 
-#ifndef ALPAKA
-    #if USE_MPI   
-      // copy to the host for mpi transfer
-      locDom->h_nodalMass = locDom->nodalMass;
+  #if USE_MPI   
+    // copy to the host for mpi transfer
+    locDom->h_nodalMass = locDom->nodalMass;
 
-      fieldData = &Domain::get_nodalMass;
+    fieldData = &Domain::get_nodalMass;
 
-      // Initial domain boundary communication 
-      CommRecv(*locDom, MSG_COMM_SBN, 1,
-              locDom->sizeX + 1, locDom->sizeY + 1, locDom->sizeZ + 1,
-              true, false) ;
-      CommSend(*locDom, MSG_COMM_SBN, 1, &fieldData,
-              locDom->sizeX + 1, locDom->sizeY + 1, locDom->sizeZ + 1,
-              true, false) ;
-      CommSBN(*locDom, 1, &fieldData) ;
+    // Initial domain boundary communication 
+    CommRecv(*locDom, MSG_COMM_SBN, 1,
+            locDom->sizeX + 1, locDom->sizeY + 1, locDom->sizeZ + 1,
+            true, false) ;
+    CommSend(*locDom, MSG_COMM_SBN, 1, &fieldData,
+            locDom->sizeX + 1, locDom->sizeY + 1, locDom->sizeZ + 1,
+            true, false) ;
+    CommSBN(*locDom, 1, &fieldData) ;
 
-      // copy back to the device
-      locDom->nodalMass = locDom->h_nodalMass;
+    // copy back to the device
+    locDom->nodalMass = locDom->h_nodalMass;
 
-      // End initialization
-      MPI_Barrier(MPI_COMM_WORLD);
-    #endif
+    // End initialization
+    MPI_Barrier(MPI_COMM_WORLD);
+  #endif
 
     cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
@@ -4738,58 +4775,59 @@ int main(int argc, char *argv[])
       timeval start;
       gettimeofday(&start, NULL) ;
     #endif
+    std::cout<<"4748"<<std::endl;
+#ifdef kernels
+      while(locDom->time_h < locDom->stoptime)
+      {
+        // this has been moved after computation of volume forces to hide launch latencies
+        //TimeIncrement(locDom) ;
 
-    while(locDom->time_h < locDom->stoptime)
-    {
-      // this has been moved after computation of volume forces to hide launch latencies
-      //TimeIncrement(locDom) ;
+        LagrangeLeapFrog(locDom) ;
 
-      LagrangeLeapFrog(locDom) ;
+        checkErrors(locDom,its,myRank);
 
-      checkErrors(locDom,its,myRank);
+        #if LULESH_SHOW_PROGRESS
+          if (myRank == 0) 
+        printf("cycle = %d, time = %e, dt=%e\n", its+1, double(locDom->time_h), double(locDom->deltatime_h) ) ;
+        #endif
+        its++;
+        if (its == num_iters) break;
+      }
 
-      #if LULESH_SHOW_PROGRESS
-        if (myRank == 0) 
-      printf("cycle = %d, time = %e, dt=%e\n", its+1, double(locDom->time_h), double(locDom->deltatime_h) ) ;
+      // make sure GPU finished its work
+      cudaDeviceSynchronize();
+
+      // Use reduced max elapsed time
+        double elapsed_time;
+      #if USE_MPI   
+        elapsed_time = MPI_Wtime() - start;
+      #else
+        timeval end;
+        gettimeofday(&end, NULL) ;
+        elapsed_time = (double)(end.tv_sec - start.tv_sec) + ((double)(end.tv_usec - start.tv_usec))/1000000 ;
       #endif
-      its++;
-      if (its == num_iters) break;
-    }
 
-    // make sure GPU finished its work
-    cudaDeviceSynchronize();
+        double elapsed_timeG;
+      #if USE_MPI   
+        MPI_Reduce(&elapsed_time, &elapsed_timeG, 1, MPI_DOUBLE,
+                  MPI_MAX, 0, MPI_COMM_WORLD);
+      #else
+        elapsed_timeG = elapsed_time;
+      #endif
 
-    // Use reduced max elapsed time
-      double elapsed_time;
-    #if USE_MPI   
-      elapsed_time = MPI_Wtime() - start;
-    #else
-      timeval end;
-      gettimeofday(&end, NULL) ;
-      elapsed_time = (double)(end.tv_sec - start.tv_sec) + ((double)(end.tv_usec - start.tv_usec))/1000000 ;
-    #endif
+      cudaProfilerStop();
 
-      double elapsed_timeG;
-    #if USE_MPI   
-      MPI_Reduce(&elapsed_time, &elapsed_timeG, 1, MPI_DOUBLE,
-                MPI_MAX, 0, MPI_COMM_WORLD);
-    #else
-      elapsed_timeG = elapsed_time;
-    #endif
+      if (myRank == 0) 
+        VerifyAndWriteFinalOutput(elapsed_timeG, *locDom, its, nx, numRanks, structured);
 
-    cudaProfilerStop();
+      #ifdef SAMI
+      DumpDomain(locDom) ;
+      #endif
+      cudaDeviceReset();
 
-    if (myRank == 0) 
-      VerifyAndWriteFinalOutput(elapsed_timeG, *locDom, its, nx, numRanks, structured);
-
-    #ifdef SAMI
-    DumpDomain(locDom) ;
-    #endif
-    cudaDeviceReset();
-
-    #if USE_MPI
-      MPI_Finalize() ;
-    #endif
+      #if USE_MPI
+        MPI_Finalize() ;
+      #endif
   #endif
 
   return 0 ;

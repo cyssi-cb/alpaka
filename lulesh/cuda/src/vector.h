@@ -28,10 +28,8 @@ void alpaka_copy(TSource &source,Ttarget & target,Textend & extend){
   auto const platform = alpaka::Platform<Acc>{};
   auto const devAcc = alpaka::getDevByIdx(platform, 0);
   QueueAcc queue(devAcc);
-  std::cout<<"lastsignal"<<std::endl;
   //alpaka::memcpy(queue, target,source,extend);
   alpaka::memcpy(queue, target,source,extend);
-  std::cout<<"aft"<<std::endl;
   alpaka::wait(queue);
 };
 template <class T>
@@ -55,7 +53,6 @@ class Vector_h{
       this->pHost=alpaka::getPtrNative(*this->bufHost);};
   //memory error on calling bufHost(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),extent1D)
     Vector_h(Idx N,T v):extent1D(Vec(N)),size_param(N){
-      std::cout<<"in main vector_h"<<std::endl;
       bufHost=std::make_shared<Buffer>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),this->extent1D));
       this->pHost=alpaka::getPtrNative(*this->bufHost);
       for(Idx i(0);i<N;i++)pHost[i]=v;
@@ -184,7 +181,8 @@ class Vector_d{
 
     template<typename TIDX>
     T &operator[](TIDX index){
-      return pAcc[index];
+      Vector_h<T> hostvec(*this);
+      return hostvec.raw()[index];
 
     }
     Buffer& getBuf(){
@@ -199,8 +197,6 @@ class Vector_d{
 
     }
     void fill(T v){
-      std::cout<<"a";
-      std::cout<<"b"<<std::endl;
       this->extent1D=Vec(this->size_param);
       using BufHost = alpaka::Buf<alpaka::DevCpu, T, Dim1, Idx>;
       std::shared_ptr<BufHost> hostbuf=std::make_shared<BufHost>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),this->extent1D));
@@ -209,6 +205,15 @@ class Vector_d{
       for(int i=0;i<this->size_param;i++)hostp[i]=v;
       alpaka_copy(*hostbuf,*this->bufAcc,this->extent1D);
       //free(hostVec);
+    }
+    /*
+      changes Values in a certain range warning this operation copies the current values from the device 
+      inserts the new values and copies back to the device this is slow and not recommended use a kernel instead
+    */
+    void changeValue(Idx from,Idx numelems,T *vec){
+      Vector_h<T> hostvec(*this);
+      for(Idx i(from);i<from+numelems&&i<this->size_param;i++)hostvec[i]=vec[i];
+      alpaka_copy(hostvec.getBuf(),*this->bufAcc,this->extent1D);
     }
     auto size()->Idx{
       return this->size_param;
