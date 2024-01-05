@@ -31,7 +31,7 @@ if(NOT TARGET alpaka::alpaka)
         find_package(alpaka REQUIRED)
     endif()
 endif()
-set(LULESH_SOURCES ./src/allocator.h ./src/lulesh_kernels.h ./src/alpaka_utils.h  ./src/lulesh.h ./src/util.h ./src/vector.h ./src/lulesh-comms.cu ./src/lulesh-comms-gpu.cu ./src/allocator.cu ./src/lulesh.cu)
+set(LULESH_SOURCES ./src/allocator.h ./src/lulesh_kernels.h ./src/alpaka_utils.h  ./src/lulesh.h ./src/util.h ./src/vector.h ./src/lulesh-comms.cu ./src/lulesh-comms-gpu.cu ./src/allocator.cu ./src/lulesh.cu ./test/alpaka_vector_test.h)
 
 alpaka_add_executable(
     ${_TARGET_NAME} ${LULESH_SOURCES})

@@ -77,6 +77,7 @@ Additional BSD Notice
 #include <cuda.h>
 #include "allocator.h"
 #include "cuda_profiler_api.h"
+#include "../test/alpaka_vector_test.h"
 /*
 #ifdef USE_MPI
 #include <mpi.h>
@@ -86,7 +87,8 @@ Additional BSD Notice
 #include <unistd.h>
 
 #include "lulesh.h"
-
+#define TEST
+#define ALPAKA
 /****************************************************/
 /* Allow flexibility for arithmetic representations */
 /****************************************************/
@@ -339,9 +341,10 @@ void AllocateElemPersistent(Domain* domain, size_t domElems, size_t padded_domEl
 {
 
    //domain->matElemlist.resize(domElems) ;  /* material indexset */
-
+   using std::endl;
+   std::cout<<"bef1"<<endl;
    domain->nodelist.resize(8*padded_domElems) ;   /* elemToNode connectivity */
-
+   std::cout<<"aft"<<endl;
 
    domain->lxim.resize(domElems) ; /* elem connectivity through face */
    domain->lxip.resize(domElems) ;
@@ -395,18 +398,18 @@ bool InitializeFields(Domain* domain)
 {
  /* Basic Field Initialization */
  #ifdef ALPAKA
-  domain->ss.fill(domain->ss.size(),0.);
-  domain->e.fill(domain->e.size(),0.);
-  domain->p.fill(domain->e.size(),0.);
-  domain->q.fill(domain->e.size(),0.);
-  domain->v.fill(domain->e.size(),0.);
-  domain->xd.fill(domain->e.size(),0.);
-  domain->yd.fill(domain->e.size(),0.);
-  domain->zd.fill(domain->e.size(),0.);
-  domain->xdd.fill(domain->e.size(),0.);
-  domain->ydd.fill(domain->e.size(),0.);
-  domain->zdd.fill(domain->e.size(),0.);
-  domain->nodalMass.fill(domain->e.size(),0.);
+  domain->ss.fill(0.);
+  domain->e.fill(0.);
+  domain->p.fill(0.);
+  domain->q.fill(0.);
+  domain->v.fill(0.);
+  domain->xd.fill(0.);
+  domain->yd.fill(0.);
+  domain->zd.fill(0.);
+  domain->xdd.fill(0.);
+  domain->ydd.fill(0.);
+  domain->zdd.fill(0.);
+  domain->nodalMass.fill(0.);
   #else
 
 
@@ -712,7 +715,7 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
 {
 
   Domain *domain = new Domain ;
-
+  #ifndef ALPAKA
   domain->max_streams = 32;
   domain->streams.resize(domain->max_streams);
 
@@ -720,19 +723,23 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
     cudaStreamCreate(&(domain->streams[i]));
 
   cudaEventCreateWithFlags(&domain->time_constraint_computed,cudaEventDisableTiming);
+  #endif
 
   Index_t domElems;
   Index_t domNodes;
   Index_t padded_domElems;
-
+  using std::cout;
+  using std::endl;
+  cout<<"in func"<<endl;
   Vector_h<Index_t> nodelist_h;
+  cout<<"after func"<<endl;
   Vector_h<Real_t> x_h;
   Vector_h<Real_t> y_h;
   Vector_h<Real_t> z_h;
-
+  cout<<"after func"<<endl;
   if (structured)
   {
-
+    cout<<"inloop"<<endl;
     domain->m_tp       = tp ;
     domain->m_numRanks = numRanks ;
 
@@ -742,30 +749,28 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
 
     Index_t edgeElems = nx ;
     Index_t edgeNodes = edgeElems+1 ;
-
+    cout<<"inloop"<<endl;
     domain->sizeX = edgeElems ;
     domain->sizeY = edgeElems ;
     domain->sizeZ = edgeElems ;  
 
     domain->numElem = domain->sizeX*domain->sizeY*domain->sizeZ ;
     domain->padded_numElem = PAD(domain->numElem,32);
-
+    cout<<"inloop"<<endl;
     domain->numNode = (domain->sizeX+1)*(domain->sizeY+1)*(domain->sizeZ+1) ;
     domain->padded_numNode = PAD(domain->numNode,32);
-
+    cout<<"inloop"<<endl;
     domElems = domain->numElem ;
     domNodes = domain->numNode ;
     padded_domElems = domain->padded_numElem ;
-
+    cout<<"bef"<<endl;
     AllocateElemPersistent(domain,domElems,padded_domElems);
-
+    cout<<"aft"<<endl;
     AllocateNodalPersistent(domain,domNodes);
-
     domain->SetupCommBuffers(edgeNodes);
 
     if(!InitializeFields(domain))return NULL;
     domain->BuildMesh(nx, edgeNodes, edgeElems, domNodes, padded_domElems, x_h, y_h, z_h, nodelist_h);
-
     domain->numSymmX = domain->numSymmY = domain->numSymmZ = 0;
 
     if (domain->m_colLoc == 0) 
@@ -774,7 +779,6 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
       domain->numSymmY = (edgeElems+1)*(edgeElems+1) ;
     if (domain->m_planeLoc == 0)
       domain->numSymmZ = (edgeElems+1)*(edgeElems+1) ;
-
     AllocateSymmX(domain,edgeNodes*edgeNodes);
     AllocateSymmY(domain,edgeNodes*edgeNodes);
     AllocateSymmZ(domain,edgeNodes*edgeNodes);
@@ -811,6 +815,7 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
       domain->symmX = symmX_h;
 
     SetupConnectivityBC(domain, edgeElems);
+    cout<<"endfirstloop"<<endl;
   }
   else
   {
@@ -4648,6 +4653,13 @@ int main(int argc, char *argv[])
   Int_t numRanks ;
   Int_t myRank ;
 
+  #ifdef TEST
+
+    if(test::test_main()){
+      std::cout<<" There were failed Test << ABORTING LULESH >> "<<std::endl;
+      return 1;
+    }
+  #endif
 #if USE_MPI   
   Domain_member fieldData ;
 
@@ -4669,6 +4681,9 @@ int main(int argc, char *argv[])
 
   // Set up the mesh and decompose. Assumes regular cubes for now
   Int_t col, row, plane, side;
+  using std::cout;
+  using std::endl;
+ 
   InitMeshDecomp(numRanks, myRank, &col, &row, &plane, &side);
 
   // TODO: change default nr to 11
