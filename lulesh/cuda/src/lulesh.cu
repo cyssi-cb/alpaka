@@ -1076,12 +1076,12 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
      matElemlist_h[i] = i ;
   }
   domain->matElemlist = matElemlist_h;
-
+  std::cout<<"before cuda Malloc"<<std::endl;
   cudaMallocHost(&domain->dtcourant_h,sizeof(Real_t),0);
   cudaMallocHost(&domain->dthydro_h,sizeof(Real_t),0);
   cudaMallocHost(&domain->bad_vol_h,sizeof(Index_t),0);
   cudaMallocHost(&domain->bad_q_h,sizeof(Index_t),0);
- 
+  std::cout<<"aft cuda Malloc"<<std::endl;
   *(domain->bad_vol_h)=-1;
   *(domain->bad_q_h)=-1;
   *(domain->dthydro_h)=1e20;
@@ -1126,7 +1126,7 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
   Vector_h<Real_t> nodalMass_h(domNodes);
   Vector_h<Real_t> volo_h(domElems);
   Vector_h<Real_t> elemMass_h(domElems);
-
+  
   for (Index_t i=0; i<domElems; ++i) {
      Real_t x_local[8], y_local[8], z_local[8] ;
      for( Index_t lnode=0 ; lnode<8 ; ++lnode )
@@ -2615,6 +2615,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     Index_t padded_numElem = domain->padded_numElem;
 
 #ifdef DOUBLE_PRECISION
+
     Vector_d<Real_t>* fx_elem = Allocator< Vector_d<Real_t> >::allocate(padded_numElem*8);
     Vector_d<Real_t>* fy_elem = Allocator< Vector_d<Real_t> >::allocate(padded_numElem*8);
     Vector_d<Real_t>* fz_elem = Allocator< Vector_d<Real_t> >::allocate(padded_numElem*8);

@@ -42,46 +42,50 @@ class Vector_h{
 
   using Vec= alpaka::Vec<Dim1,Idx>;
   using Buffer = alpaka::Buf<DevHost, T, Dim1, Idx>;
-  Buffer bufHost;
+  std::shared_ptr<Buffer> bufHost;
   T * pHost;
   Vec extent1D;
   public:
-    Vector_h():size_param(0),bufHost(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),Vec(0))) {this->pHost=alpaka::getPtrNative(this->bufHost);}
-    Vector_h(Idx N):extent1D(Vec(N)),size_param(N),bufHost(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),extent1D)){ this->pHost=alpaka::getPtrNative(this->bufHost);};
+    Vector_h():size_param(0),extent1D(Vec(0)){
+      bufHost=std::make_shared<Buffer>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),this->extent1D));
+      this->pHost=alpaka::getPtrNative(*this->bufHost);}
+
+    Vector_h(Idx N):extent1D(Vec(N)),size_param(N){ 
+      bufHost=std::make_shared<Buffer>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),this->extent1D));
+      this->pHost=alpaka::getPtrNative(*this->bufHost);};
   //memory error on calling bufHost(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),extent1D)
-    Vector_h(Idx N,T v):extent1D(Vec(N)),size_param(N),bufHost(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),extent1D)){
+    Vector_h(Idx N,T v):extent1D(Vec(N)),size_param(N){
       std::cout<<"in main vector_h"<<std::endl;
-      this->pHost=alpaka::getPtrNative(this->bufHost);
+      bufHost=std::make_shared<Buffer>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),this->extent1D));
+      this->pHost=alpaka::getPtrNative(*this->bufHost);
       for(Idx i(0);i<N;i++)pHost[i]=v;
     }
     Vector_h(Vector_h<T>& source):extent1D(Vec(source.size())),
-    size_param(source.size()),
-    bufHost(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),extent1D)){
-      this->pHost=alpaka::getPtrNative(this->bufHost);
+    size_param(source.size()){
+      bufHost=std::make_shared<Buffer>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),this->extent1D));
+      this->pHost=alpaka::getPtrNative(*this->bufHost);
       T* const pSourceHost =source.raw();
       for(Idx i(0);i<source.size();i++){
             pHost[i]=source[i];
       }
     }
-    Vector_h(Vector_d<T> &source):extent1D(Vec(source.size())),
-    size_param(source.size()),bufHost(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),extent1D)){
-      this->pHost=alpaka::getPtrNative(this->bufHost);
-      alpaka_copy(source.getBuf(),this->bufHost,extent1D);//copy device to host
+    Vector_h(Vector_d<T> &source):extent1D(Vec(source.size())),size_param(source.size()){
+      bufHost=std::make_shared<Buffer>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),this->extent1D));
+      this->pHost=alpaka::getPtrNative(*this->bufHost);
+      alpaka_copy(source.getBuf(),*this->bufHost,this->extent1D);//copy device to host
     }
     Vector_h<T>& operator=(Vector_h<T> &a) { 
       if(this->size_param!=a.size()){
-        printf("vector sizes dont not match for copy\n");
-        return *this;
+        this->resize(a.size());
       }
       for(Idx i(0);i<this->size_param;i++)pHost[i]=a.pHost[i];
       return *this;
     }
     Vector_h<T> &operator=(Vector_d<T> &a){
       if(this->size_param!=a.size()){
-        printf("vector sizes dont not match for copy\n");
-        return *this;
+        this->resize(a.size());
       }
-      alpaka_copy(a.getBuf(),this->bufHost,extent1D);//copy device to source
+      alpaka_copy(a.getBuf(),*this->bufHost,this->extent1D);//copy device to source
       return *this;
     };
     Idx size(){
@@ -92,11 +96,11 @@ class Vector_h{
     void resize(TIDX N){
       this->size_param=static_cast<Idx>(N);
       this->extent1D=Vec(N);
-      this->bufHost=alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),this->extent1D);
-      this->pHost=alpaka::getPtrNative(this->bufHost);
+      this->bufHost=std::make_shared<Buffer>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),this->extent1D));
+      this->pHost=alpaka::getPtrNative(*this->bufHost);
     }
     Buffer& getBuf(){
-        return bufHost;
+        return *bufHost;
       }
     void fill(T v){
       for(Idx i(0);i<this->size_param;i++)pHost[i]=v;
@@ -123,57 +127,58 @@ class Vector_d{
 
   using Vec= alpaka::Vec<Dim1,Idx>;
   using Buffer=alpaka::Buf<DevAcc, T, Dim1, Idx>;
-  Buffer bufAcc;
+  std::shared_ptr<Buffer> bufAcc;
   T * pAcc;
   Vec extent1D;
   //TODO
   public:
     Vector_d():size_param(0),
-    extent1D(Vec(0)),
-    bufAcc(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0),extent1D)) {
-      this->pAcc=alpaka::getPtrNative(this->bufAcc);
+    extent1D(Vec(0)){
+      this->bufAcc=std::make_shared<Buffer>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0),this->extent1D));
+      this->pAcc=alpaka::getPtrNative(*this->bufAcc);
 
     };
 
     Vector_d(Idx N):size_param(N),
-    extent1D(Vec(N)),
-    bufAcc(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0),extent1D)){ this->pAcc=alpaka::getPtrNative(this->bufAcc);};
+    extent1D(Vec(N)){ 
+      this->bufAcc=std::make_shared<Buffer>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0),this->extent1D));
+
+      this->pAcc=alpaka::getPtrNative(*this->bufAcc);
+      };
 
     Vector_d(Idx N,T v):size_param(N),
-    extent1D(Vec(N)),
-    bufAcc(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0),extent1D)){
-      this->pAcc=alpaka::getPtrNative(this->bufAcc);
+    extent1D(Vec(N)){
+      this->bufAcc=std::make_shared<Buffer>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0),this->extent1D));
+      this->pAcc=alpaka::getPtrNative(*this->bufAcc);
       this->fill(v);
     }
 
     Vector_d(Vector_h<T>& source):size_param(source.size()),
-    extent1D(Vec(source.size())),
-    bufAcc(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0),extent1D)){
-      this->pAcc=alpaka::getPtrNative(this->bufAcc);
-      alpaka_copy(source.getBuf(),this->bufAcc,this->extent1D);
+    extent1D(Vec(source.size())){
+      this->bufAcc=std::make_shared<Buffer>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0),this->extent1D));
+      this->pAcc=alpaka::getPtrNative(*this->bufAcc);
+      alpaka_copy(source.getBuf(),*this->bufAcc,this->extent1D);
     }
 
     Vector_d(Vector_d<T> &source):size_param(source.size()),
-    extent1D(Vec(source.size())),
-    bufAcc(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0),extent1D)){
-      this->pAcc=alpaka::getPtrNative(this->bufAcc);
-      alpaka_copy(source.getBuf(),this->bufAcc,this->extent1D);//copy device to host
+    extent1D(Vec(source.size())){
+      this->bufAcc=std::make_shared<Buffer>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0),this->extent1D));
+      this->pAcc=alpaka::getPtrNative(*this->bufAcc);
+      alpaka_copy(source.getBuf(),*this->bufAcc,this->extent1D);//copy device to host
     }
 
     Vector_d<T>& operator=(Vector_h<T> &a) { 
       if(this->size_param!=a.size()){
-        printf("vector sizes dont not match for copy\n");
-        return *this;
+        this->resize(a.size());
       }
-      alpaka_copy(a.getBuf(),this->bufAcc,this->extent1D);
+      alpaka_copy(a.getBuf(),*this->bufAcc,this->extent1D);
       return *this;
     }
     Vector_d<T> &operator=(Vector_d<T> &a){
       if(this->size_param!=a.size()){
-        printf("vector sizes dont not match for copy\n");
-        return *this;
+        this->resize(a.size());
       }
-      alpaka_copy(a.getBuf(),this->bufAcc,this->extent1D);
+      alpaka_copy(a.getBuf(),*this->bufAcc,this->extent1D);
       return *this;
     }
 
@@ -183,14 +188,14 @@ class Vector_d{
 
     }
     Buffer& getBuf(){
-      return bufAcc;
+      return *bufAcc;
     }
     template<typename TIDX>
     void resize(TIDX N){
       this->size_param=static_cast<Idx>(N);
       this->extent1D=Vec(N);
-      this->bufAcc=alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0),this->extent1D);
-      this->pAcc=alpaka::getPtrNative(this->bufAcc);
+      this->bufAcc=std::make_shared<Buffer>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0),this->extent1D));
+      this->pAcc=alpaka::getPtrNative(*this->bufAcc);
 
     }
     void fill(T v){
@@ -198,11 +203,11 @@ class Vector_d{
       std::cout<<"b"<<std::endl;
       this->extent1D=Vec(this->size_param);
       using BufHost = alpaka::Buf<alpaka::DevCpu, T, Dim1, Idx>;
-      BufHost hostbuf=alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),this->extent1D);
-      T * hostp=alpaka::getPtrNative(hostbuf);
+      std::shared_ptr<BufHost> hostbuf=std::make_shared<BufHost>(alpaka::allocBuf<T, Idx>(alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0),this->extent1D));
+      T * hostp=alpaka::getPtrNative(*hostbuf);
 
       for(int i=0;i<this->size_param;i++)hostp[i]=v;
-      alpaka_copy(hostbuf,this->bufAcc,this->extent1D);
+      alpaka_copy(*hostbuf,*this->bufAcc,this->extent1D);
       //free(hostVec);
     }
     auto size()->Idx{
