@@ -2728,7 +2728,29 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
 
     // Launch boundary nodes first
     dimGrid= PAD_DIV(num_threads,block_size);
-
+   
+    using AddNodeForce = lulesh_port_kernels::AddNodeForcesFromElems_kernel_class;
+    AddNodeForce NodeForceKernel(
+        domain->numNode,
+        domain->padded_numNode,
+        domain->nodeElemCount.raw(),
+        domain->nodeElemStart.raw(),
+        domain->nodeElemCornerList.raw(),
+        fx_elem->raw(),
+        fy_elem->raw(),
+        fz_elem->raw(),
+        domain->fx.raw(),
+        domain->fy.raw(),
+        domain->fz.raw(),
+        num_threads
+    );
+    
+    using Dim2 = alpaka::DimInt<2>;
+    using Idx = std::size_t;
+    using Vec2 =alpaka::Vec<Dim2, Idx>;
+    
+    alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(NodeForceKernel,Vec2{block_size,dimGrid},true);
+     std::cout<<"2753"<<std::endl;
     AddNodeForcesFromElems_kernel<<<dimGrid,block_size>>>
     ( domain->numNode,
       domain->padded_numNode,
@@ -2743,6 +2765,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       domain->fz.raw(),
       num_threads
     );
+     std::cout<<"2768"<<std::endl;
 //    cudaDeviceSynchronize();
 //    cudaCheckError();
 

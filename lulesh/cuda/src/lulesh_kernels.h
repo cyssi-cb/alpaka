@@ -6,6 +6,8 @@ namespace lulesh_port_kernels{
 
 
 using Index_t= std::int32_t;
+using Int_t=std::int32_t;
+
 auto static inline SumElemFaceNormal(Real_t *normalX0, Real_t *normalY0, Real_t *normalZ0,
                        Real_t *normalX1, Real_t *normalY1, Real_t *normalZ1,
                        Real_t *normalX2, Real_t *normalY2, Real_t *normalZ2,
@@ -497,6 +499,88 @@ auto CalcElemVolumeDerivative(Real_t dvdx[8],
            z[6], z[5], z[4], z[3], z[2], z[0],
            &dvdx[7], &dvdy[7], &dvdz[7]);
 }
+
+class AddNodeForcesFromElems_kernel_class{
+
+    Index_t numNode;
+    Index_t padded_numNode;
+    const Int_t* nodeElemCount; 
+    const Int_t* nodeElemStart; 
+    const Index_t* nodeElemCornerList;
+    const Real_t* fx_elem;
+    const Real_t* fy_elem; 
+    const Real_t* fz_elem;
+    Real_t* fx_node;
+    Real_t* fy_node; 
+    Real_t* fz_node;
+    Int_t num_threads;
+
+    public:
+    AddNodeForcesFromElems_kernel_class(
+    Index_t numNode,
+    Index_t padded_numNode,
+    const Int_t* nodeElemCount, 
+    const Int_t* nodeElemStart, 
+    const Index_t* nodeElemCornerList,
+    const Real_t* fx_elem, 
+    const Real_t* fy_elem, 
+    const Real_t* fz_elem,
+    Real_t* fx_node, 
+    Real_t* fy_node, 
+    Real_t* fz_node,
+    const Int_t num_threads
+    ){
+    this->numNode=numNode;
+    this->padded_numNode=padded_numNode;
+    this->nodeElemCount=nodeElemCount; 
+    this->nodeElemStart=nodeElemStart; 
+    this->nodeElemCornerList=nodeElemCornerList;
+    this->fx_elem=fx_elem; 
+    this->fy_elem=fy_elem; 
+    this->fz_elem=fz_elem;
+    this->fx_node=fx_node; 
+    this->fy_node=fy_node; 
+    this->fz_node=fz_node;
+    this->num_threads=num_threads;
+    };
+    template<typename TAcc>
+    ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
+    {
+        using Dim = alpaka::Dim<TAcc>;
+        using Idx = alpaka::Idx<TAcc>;
+        using Vec = alpaka::Vec<Dim, Idx>;
+        using Vec1 = alpaka::Vec<alpaka::DimInt<1u>, Idx>;
+        
+        Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+        Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+        Int_t tid=static_cast<unsigned int>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+    
+        if (tid < num_threads)
+        {
+            Index_t g_i = tid;
+            Int_t count=nodeElemCount[g_i];
+            Int_t start=nodeElemStart[g_i];
+            Real_t fx,fy,fz;
+            fx=fy=fz=Real_t(0.0);
+
+            for (int j=0;j<count;j++) 
+            {
+                Index_t pos=nodeElemCornerList[start+j]; // Uncoalesced access here
+                fx += fx_elem[pos]; 
+                fy += fy_elem[pos]; 
+                fz += fz_elem[pos];
+            }
+
+
+            fx_node[g_i]=fx; 
+            fy_node[g_i]=fy; 
+            fz_node[g_i]=fz;
+        }
+    };    
+
+
+};
+
 class CalcVolumeForceForElems_kernel_class{
 
     Real_t* __restrict__ volo,*__restrict__ v,*__restrict__ p,*__restrict__ q;

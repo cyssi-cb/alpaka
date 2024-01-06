@@ -26,7 +26,7 @@ if(NOT TARGET alpaka::alpaka)
     if(alpaka_USE_SOURCE_TREE)
         # Don't build the examples recursively
         set(alpaka_BUILD_LULESH OFF)
-        add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../.." "${CMAKE_BINARY_DIR}/alpaka")
+        add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../../" "${CMAKE_BINARY_DIR}/alpaka")
     else()
         find_package(alpaka REQUIRED)
     endif()
@@ -36,11 +36,13 @@ set(LULESH_SOURCES ./src/allocator.h ./src/lulesh_kernels.h ./src/alpaka_utils.h
 alpaka_add_executable(
     ${_TARGET_NAME} ${LULESH_SOURCES})
 
+
 target_link_libraries(
     ${_TARGET_NAME}
     PUBLIC alpaka::alpaka)
 
 set_target_properties(${_TARGET_NAME} PROPERTIES FOLDER lulesh)
+set_target_properties(${_TARGET_NAME} PROPERTIES CUDA_ARCHITECTURES "50;72")
 
 cmake_minimum_required(VERSION 3.22)
 
