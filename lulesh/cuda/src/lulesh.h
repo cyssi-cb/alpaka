@@ -29,8 +29,8 @@ enum {
 typedef float        real4 ;
 typedef double       real8 ;
 
-typedef int    Index_t ; /* array subscript and loop index */
-typedef int    Int_t ;   /* integer representation */
+typedef std::int32_t   Index_t ; /* array subscript and loop index */
+typedef std::int32_t    Int_t ;   /* integer representation */
 #define Real_t double
 //ifdef DOUBLE_PRECISION
 //typedef real8  Real_t ;  /* floating point representation */

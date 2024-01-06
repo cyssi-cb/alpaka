@@ -2637,88 +2637,91 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     const int block_size = 64;
     int dimGrid = PAD_DIV(num_threads,block_size);
 
-    bool hourg_gt_zero = hgcoef > Real_t(0.0);
-    if (hourg_gt_zero)
-    {
-      std::cout<<"2643"<<std::endl;
-      CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size>>>
-      ( domain->volo.raw(), 
+    const bool hourg_gt_zero = hgcoef > Real_t(0.0);
+    #ifdef ALPAKA
+      std::cout<<"2673"<<std::endl;
+      using CalcElemForce = lulesh_port_kernels::CalcVolumeForceForElems_kernel_class;
+      CalcElemForce ElemForceKernel(domain->volo.raw(),
         domain->v.raw(), 
         domain->p.raw(), 
         domain->q.raw(),
-	      hgcoef, numElem, padded_numElem,
+        hgcoef, 
+        numElem, 
+        padded_numElem,
         domain->nodelist.raw(), 
         domain->ss.raw(), 
         domain->elemMass.raw(),
         domain->x.raw(), domain->y.raw(), domain->z.raw(), domain->xd.raw(), domain->yd.raw(), domain->zd.raw(),
-#ifdef DOUBLE_PRECISION
         fx_elem->raw(), 
         fy_elem->raw(), 
         fz_elem->raw() ,
-#else
-        domain->fx.raw(),
-        domain->fy.raw(),
-        domain->fz.raw(),
-#endif
         domain->bad_vol_h,
-        num_threads
+        num_threads,
+        hourg_gt_zero
       );
-    }
-    else
-    {
-      std::cout<<"2669"<<std::endl;
-      
-//#ifdef ALPAKA 
-//TODO fix and create first kernel using alpaka_utils.h and lulesh_kernels.h currently not compiling
-        /*lulesh_port_kernels::CalcVolumeForceForElems_kernel kernel
-        (domain->volo.raw(),
-        domain->v.raw(), 
-        domain->p.raw(), 
-        domain->q.raw(),
-	      hgcoef, numElem, padded_numElem,
-        domain->nodelist.raw(), 
-        domain->ss.raw(), 
-        domain->elemMass.raw(),
-        domain->x.raw(), domain->y.raw(), domain->z.raw(), domain->xd.raw(), domain->yd.raw(), domain->zd.raw(),
+      using Dim2 = alpaka::DimInt<2>;
+      using Idx = std::size_t;
+      using Vec2 =alpaka::Vec<Dim2, Idx>;
+      std::cout<<"2665"<<std::endl;
+      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ElemForceKernel,Vec2{block_size,dimGrid},true);
+      std::cout<<"2667"<<std::endl;
+    #else
+      if (hourg_gt_zero)
+      {
+        std::cout<<"2643"<<std::endl;
+        CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size>>>
+        ( domain->volo.raw(), 
+          domain->v.raw(), 
+          domain->p.raw(), 
+          domain->q.raw(),
+          hgcoef, numElem, padded_numElem,
+          domain->nodelist.raw(), 
+          domain->ss.raw(), 
+          domain->elemMass.raw(),
+          domain->x.raw(), domain->y.raw(), domain->z.raw(), domain->xd.raw(), domain->yd.raw(), domain->zd.raw(),
   #ifdef DOUBLE_PRECISION
-        fx_elem->raw(), 
-        fy_elem->raw(), 
-        fz_elem->raw() ,
+          fx_elem->raw(), 
+          fy_elem->raw(), 
+          fz_elem->raw() ,
   #else
-        domain->fx.raw(),
-        domain->fy.raw(),
-        domain->fz.raw(),
+          domain->fx.raw(),
+          domain->fy.raw(),
+          domain->fz.raw(),
   #endif
-        domain->bad_vol_h,
-        num_threads
-      );
-      std::cout<<"2694"<<std::endl;*/
-//#else
-        CalcVolumeForceForElems_kernel<false> <<<dimGrid,block_size>>>
-      ( domain->volo.raw(),
-        domain->v.raw(), 
-        domain->p.raw(), 
-        domain->q.raw(),
-	      hgcoef, numElem, padded_numElem,
-        domain->nodelist.raw(), 
-        domain->ss.raw(), 
-        domain->elemMass.raw(),
-        domain->x.raw(), domain->y.raw(), domain->z.raw(), domain->xd.raw(), domain->yd.raw(), domain->zd.raw(),
+          domain->bad_vol_h,
+          num_threads
+        );
+      }
+      else
+      {
+        
+  //TODO fix and create first kernel using alpaka_utils.h and lulesh_kernels.h currently not compiling
 
-#ifdef DOUBLE_PRECISION
-        fx_elem->raw(), 
-        fy_elem->raw(), 
-        fz_elem->raw() ,
-#else
-        domain->fx.raw(),
-        domain->fy.raw(),
-        domain->fz.raw(),
-#endif
-        domain->bad_vol_h,
-        num_threads
-      );
-    }
-//#endif //endif ALPAKA
+          CalcVolumeForceForElems_kernel<false> <<<dimGrid,block_size>>>
+        ( domain->volo.raw(),
+          domain->v.raw(), 
+          domain->p.raw(), 
+          domain->q.raw(),
+          hgcoef, numElem, padded_numElem,
+          domain->nodelist.raw(), 
+          domain->ss.raw(), 
+          domain->elemMass.raw(),
+          domain->x.raw(), domain->y.raw(), domain->z.raw(), domain->xd.raw(), domain->yd.raw(), domain->zd.raw(),
+
+  #ifdef DOUBLE_PRECISION
+          fx_elem->raw(), 
+          fy_elem->raw(), 
+          fz_elem->raw() ,
+  #else
+          domain->fx.raw(),
+          domain->fy.raw(),
+          domain->fz.raw(),
+  #endif
+          domain->bad_vol_h,
+          num_threads
+        );
+      }
+#endif //endif ALPAKA
 
 #ifdef DOUBLE_PRECISION
     num_threads = domain->numNode;
@@ -2749,18 +2752,17 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
 
 #endif // ifdef DOUBLE_PRECISION
    return ;
-}
+};
 
 
-static inline
-void CalcVolumeForceForElems(Domain* domain)
+static inline void CalcVolumeForceForElems(Domain* domain)
 {
-      const Real_t hgcoef = domain->hgcoef ;
+    const Real_t hgcoef = domain->hgcoef;
 
      CalcVolumeForceForElems(hgcoef,domain);
 
      //CalcVolumeForceForElems_warp_per_4cell(hgcoef,domain);
-}
+};
 
 static inline void checkErrors(Domain* domain,int its,int myRank)
 {
@@ -4320,9 +4322,7 @@ void CalcTimeConstraintsForElems(Domain* domain)
     Allocator<Vector_d<Real_t> >::free(dev_mindthydro,dimGrid);
 }
 
-
-static inline
-void LagrangeLeapFrog(Domain* domain)
+static inline void LagrangeLeapFrog(Domain* domain)
 {
 
    /* calculate nodal forces, accelerations, velocities, positions, with
@@ -4777,7 +4777,7 @@ int main(int argc, char *argv[])
       gettimeofday(&start, NULL) ;
     #endif
     std::cout<<"4748"<<std::endl;
-#ifdef kernels
+
       while(locDom->time_h < locDom->stoptime)
       {
         // this has been moved after computation of volume forces to hide launch latencies
@@ -4794,7 +4794,7 @@ int main(int argc, char *argv[])
         its++;
         if (its == num_iters) break;
       }
-
+      #ifdef kernels
       // make sure GPU finished its work
       cudaDeviceSynchronize();
 

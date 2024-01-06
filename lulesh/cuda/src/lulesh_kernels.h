@@ -5,7 +5,7 @@
 namespace lulesh_port_kernels{
 
 
-using Index_t= std::uint32_t;
+using Index_t= std::int32_t;
 auto static inline SumElemFaceNormal(Real_t *normalX0, Real_t *normalY0, Real_t *normalZ0,
                        Real_t *normalX1, Real_t *normalY1, Real_t *normalZ1,
                        Real_t *normalX2, Real_t *normalY2, Real_t *normalZ2,
@@ -497,8 +497,7 @@ auto CalcElemVolumeDerivative(Real_t dvdx[8],
            z[6], z[5], z[4], z[3], z[2], z[0],
            &dvdx[7], &dvdy[7], &dvdz[7]);
 }
-template< bool hourg_gt_zero,typename Index_t> 
-class CalcVolumeForceForElems_kernel{
+class CalcVolumeForceForElems_kernel_class{
 
     Real_t* __restrict__ volo,*__restrict__ v,*__restrict__ p,*__restrict__ q;
     Real_t hourg;
@@ -511,9 +510,9 @@ class CalcVolumeForceForElems_kernel{
     Real_t coefficient;
     Index_t* __restrict__ bad_vol;
     Index_t num_threads;
-    
- 
-    CalcVolumeForceForElems_kernel(
+    bool hour_gt_zero;
+    public:
+    CalcVolumeForceForElems_kernel_class(
 
     Real_t * __restrict__ volo, 
     Real_t * __restrict__ v,
@@ -535,9 +534,11 @@ class CalcVolumeForceForElems_kernel{
     Real_t*  fy_elem, 
     Real_t* fz_elem,
     Index_t*  bad_vol,
-    const Index_t num_threads):volo(volo),ss(ss),x(x),y(y),z(z),xd(xd),yd(yd),zd(zd),
-    fx_elem(fx_elem),fy_elem(fy_elem),fz_elem(fz_elem),coefficient(coefficient),bad_vol(bad_vol),num_threads(num_threads){
+    const Index_t num_threads,
+    bool hour_gt_zero):volo(volo),ss(ss),x(x),y(y),z(z),xd(xd),yd(yd),zd(zd),
+    fx_elem(fx_elem),fy_elem(fy_elem),fz_elem(fz_elem),coefficient(coefficient),bad_vol(bad_vol),num_threads(num_threads),hour_gt_zero(hour_gt_zero){
         this->elemMass=elemMass;
+
 
     };
     template<typename TAcc>
@@ -599,7 +600,7 @@ class CalcVolumeForceForElems_kernel{
 
 
       Real_t volume13 = cbrt(det);
-      coefficient = - hourg * Real_t(0.01) * ss1 * mass1 / volume13;
+      Real_t coefficient2 = - hourg * Real_t(0.01) * ss1 * mass1 / volume13;
 
       /*************************************************/
       /*    compute the volume derivatives             */
@@ -632,7 +633,7 @@ class CalcVolumeForceForElems_kernel{
         hgfz[i] = -( sigxx*B[2][i] );
       }
 
-      if (hourg_gt_zero)
+      if (this->hour_gt_zero)
       {
         /*************************************************/
         /*    CalcFBHourglassForceForElems               */
@@ -656,11 +657,11 @@ class CalcVolumeForceForElems_kernel{
 
 
 
-        CalcElemFBHourglassForce
+        lulesh_port_kernels::CalcElemFBHourglassForce
         ( &xdn[0],&ydn[0],&zdn[0],
           hourgam[0],hourgam[1],hourgam[2],hourgam[3],
           hourgam[4],hourgam[5],hourgam[6],hourgam[7],
-          coefficient,
+          coefficient2,
           &hgfx[0],&hgfy[0],&hgfz[0]
         );
 
