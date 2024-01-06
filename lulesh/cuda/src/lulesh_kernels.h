@@ -1,4 +1,5 @@
-#include <stdint.h>
+#include <stdint.h> 
+#include <iostream>
 #include <alpaka/alpaka.hpp>
 #define Real_t double
 #define Real_tp double*
@@ -500,6 +501,67 @@ auto CalcElemVolumeDerivative(Real_t dvdx[8],
            &dvdx[7], &dvdy[7], &dvdz[7]);
 }
 
+
+class CalcAccelerationForNodes_kernel_class{
+
+
+    int numNode;
+    Real_t *xdd;
+    Real_t *ydd;
+    Real_t *zdd;
+    Real_t *fx;
+    Real_t *fy;
+    Real_t *fz;
+    Real_t *nodalMass;
+    
+    public:
+    CalcAccelerationForNodes_kernel_class(
+    int numNode,
+    Real_t *xdd,
+    Real_t *ydd,
+    Real_t *zdd,
+    Real_t *fx,
+    Real_t *fy,
+    Real_t *fz,
+    Real_t *nodalMass
+    ){
+         this->numNode=numNode;
+         this->xdd=xdd;
+         this->ydd=ydd;
+         this->zdd=zdd;
+         this->fx=fx;
+         this->fy=fy;
+         this->fz=fz;
+         this->nodalMass=nodalMass;
+    
+    };
+    template<typename TAcc>
+    ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
+    {
+        std::printf("[DEVICE] CalcAccelerationForNodes_kernel_class\n");
+        using Dim = alpaka::Dim<TAcc>;
+        using Idx = alpaka::Idx<TAcc>;
+        using Vec = alpaka::Vec<Dim, Idx>;
+        using Vec1 = alpaka::Vec<alpaka::DimInt<1u>, Idx>;
+        
+        Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+        Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+        int tid=static_cast<int>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+        std::printf("device\n");
+        if (tid < numNode)
+        {
+            Real_t one_over_nMass = Real_t(1.)/nodalMass[tid];
+            xdd[tid]=fx[tid]*one_over_nMass;
+            ydd[tid]=fy[tid]*one_over_nMass;
+            zdd[tid]=fz[tid]*one_over_nMass;
+        }
+    
+    };
+
+
+
+};
+
 class AddNodeForcesFromElems_kernel_class{
 
     Index_t numNode;
@@ -546,6 +608,7 @@ class AddNodeForcesFromElems_kernel_class{
     template<typename TAcc>
     ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
     {
+        //std::printf("[DEVICE] AddNodeForcesFromElems_kernel_class\n");
         using Dim = alpaka::Dim<TAcc>;
         using Idx = alpaka::Idx<TAcc>;
         using Vec = alpaka::Vec<Dim, Idx>;

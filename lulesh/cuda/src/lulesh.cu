@@ -2852,15 +2852,37 @@ void CalcAccelerationForNodes_kernel(int numNode,
 static inline
 void CalcAccelerationForNodes(Domain *domain)
 {
-    Index_t dimBlock = 128;
-    Index_t dimGrid = PAD_DIV(domain->numNode,dimBlock);
-
+    const int dimBlock = 128;
+    int dimGrid = PAD_DIV(static_cast<int>(domain->numNode),dimBlock);
+    std::cout<<"2857"<<std::endl;
+    #ifdef ALPAKA
+    using CalcAccelerationNodes = lulesh_port_kernels::CalcAccelerationForNodes_kernel_class;
+    CalcAccelerationNodes CalcAccNodeKernel(
+        domain->numNode,
+        domain->xdd.raw(),
+        domain->ydd.raw(),
+        domain->zdd.raw(),
+        domain->fx.raw(),
+        domain->fy.raw(),
+        domain->fz.raw(),
+        domain->nodalMass.raw()
+    );
+    std::cout<<"2869"<<std::endl;
+    using Dim2 = alpaka::DimInt<2>;
+    using Idx = std::size_t;
+    using Vec2 =alpaka::Vec<Dim2, Idx>;
+    std::cout<<"2873"<<std::endl;
+    alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcAccNodeKernel,Vec2{dimBlock,dimGrid},true);
+    std::cout<<"2875"<<std::endl;
+    #else
     CalcAccelerationForNodes_kernel<<<dimGrid, dimBlock>>>
         (domain->numNode,
          domain->xdd.raw(),domain->ydd.raw(),domain->zdd.raw(),
          domain->fx.raw(),domain->fy.raw(),domain->fz.raw(),
          domain->nodalMass.raw());
+    #endif
 
+    std::cout<<"2884"<<std::endl;
     //cudaDeviceSynchronize();
     //cudaCheckError();
 }
