@@ -501,6 +501,123 @@ auto CalcElemVolumeDerivative(Real_t dvdx[8],
            &dvdx[7], &dvdy[7], &dvdz[7]);
 }
 
+class CalcPositionAndVelocityForNodes_kernel_class{
+
+
+    int numNode;
+    Real_t deltatime; 
+    Real_t u_cut;
+    Real_t* __restrict__ x;
+    Real_t* __restrict__ y;
+    Real_t* __restrict__ z;
+    Real_t* __restrict__ xd;
+    Real_t* __restrict__ yd;
+    Real_t* __restrict__ zd;
+    const Real_t* __restrict__ xdd;
+    const Real_t* __restrict__ ydd;
+    const Real_t* __restrict__ zdd;
+    
+    public:
+    CalcPositionAndVelocityForNodes_kernel_class(
+        int numNode, 
+        const Real_t deltatime, 
+        const Real_t u_cut,
+        Real_t* __restrict__ x,  
+        Real_t* __restrict__ y,  
+        Real_t* __restrict__ z,
+        Real_t* __restrict__ xd, 
+        Real_t* __restrict__ yd, 
+        Real_t* __restrict__ zd,
+        const Real_t* __restrict__ xdd,
+        const Real_t* __restrict__ ydd, 
+        const Real_t* __restrict__ zdd
+    ){
+        this->numNode=numNode; 
+        this->deltatime=deltatime; 
+        this->u_cut=u_cut;
+        this->x=x;  
+        this->y=y;  
+        this->z=z;
+        this->xd=xd; 
+        this->yd=yd; 
+        this->zd=zd;
+        this->xdd=xdd;
+        this->ydd=ydd; 
+        this->zdd=zdd;
+    };
+    template<typename TAcc>
+    ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
+    {
+        using Dim = alpaka::Dim<TAcc>;
+        using Idx = alpaka::Idx<TAcc>;
+        using Vec = alpaka::Vec<Dim, Idx>;
+        using Vec1 = alpaka::Vec<alpaka::DimInt<1u>, Idx>;
+        
+        Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+        Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+        Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
+        int i=static_cast<int>(linearizedGlobalThreadIdx[0u]);
+        
+        if (i < numNode)
+        {
+            Real_t xdtmp, ydtmp, zdtmp, dt;
+            dt = deltatime;
+      
+            xdtmp = xd[i] + xdd[i] * dt ;
+            ydtmp = yd[i] + ydd[i] * dt ;
+            zdtmp = zd[i] + zdd[i] * dt ;
+
+            if( fabs(xdtmp) < u_cut ) xdtmp = 0.0;
+            if( fabs(ydtmp) < u_cut ) ydtmp = 0.0;
+            if( fabs(zdtmp) < u_cut ) zdtmp = 0.0;
+ 
+            x[i] += xdtmp * dt;
+            y[i] += ydtmp * dt;
+            z[i] += zdtmp * dt;
+      
+            xd[i] = xdtmp; 
+            yd[i] = ydtmp; 
+            zd[i] = zdtmp; 
+        }
+    };
+};
+
+class ApplyAccelerationBoundaryConditionsForNodes_kernel_class{
+
+    int numNodeBC;
+    Real_t *xyzdd; 
+    Index_t *symm;
+
+    public:
+    ApplyAccelerationBoundaryConditionsForNodes_kernel_class(
+    int numNodeBC, 
+    Real_t *xyzdd, 
+    Index_t *symm
+    ){
+        this->numNodeBC=numNodeBC;
+        this->xyzdd=xyzdd;
+        this->symm=symm;
+    };
+    template<typename TAcc>
+    ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
+    {
+        using Dim = alpaka::Dim<TAcc>;
+        using Idx = alpaka::Idx<TAcc>;
+        using Vec = alpaka::Vec<Dim, Idx>;
+        using Vec1 = alpaka::Vec<alpaka::DimInt<1u>, Idx>;
+        
+        Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+        Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+        Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
+        int tid=static_cast<int>(linearizedGlobalThreadIdx[0u]);//(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+        
+        if (tid < numNodeBC)
+        {
+            xyzdd[symm[tid]] = Real_t(0.0) ;
+        }
+    };
+};
+
 
 class CalcAccelerationForNodes_kernel_class{
 
@@ -555,6 +672,7 @@ class CalcAccelerationForNodes_kernel_class{
             ydd[tid]=fy[tid]*one_over_nMass;
             zdd[tid]=fz[tid]*one_over_nMass;
         }
+        
     
     };
 

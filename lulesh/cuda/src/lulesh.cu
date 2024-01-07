@@ -2872,7 +2872,7 @@ void CalcAccelerationForNodes(Domain *domain)
     using Idx = std::size_t;
     using Vec2 =alpaka::Vec<Dim2, Idx>;
     std::cout<<"2873"<<std::endl;
-    alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcAccNodeKernel,Vec2{dimBlock,dimGrid},true);
+    //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcAccNodeKernel,Vec2{dimBlock,dimGrid},true);
     std::cout<<"2875"<<std::endl;
     #else
     CalcAccelerationForNodes_kernel<<<dimGrid, dimBlock>>>
@@ -2902,29 +2902,86 @@ void ApplyAccelerationBoundaryConditionsForNodes_kernel(
 static inline
 void ApplyAccelerationBoundaryConditionsForNodes(Domain *domain)
 {
-
+    std::cout<<"2905"<<std::endl;
     Index_t dimBlock = 128;
 
     Index_t dimGrid = PAD_DIV(domain->numSymmX,dimBlock);
-    if (domain->numSymmX > 0)
-      ApplyAccelerationBoundaryConditionsForNodes_kernel<<<dimGrid, dimBlock>>>
+    if (domain->numSymmX > 0){
+    
+        //Alpaka Code
+        using ApplyAccBoundaryConditionsNodes = lulesh_port_kernels::ApplyAccelerationBoundaryConditionsForNodes_kernel_class;
+        ApplyAccBoundaryConditionsNodes ApplyAccBoundaryKernel(
+            domain->numSymmX,
+            domain->xdd.raw(),
+            domain->symmX.raw()
+        );
+        using Dim2 = alpaka::DimInt<2>;
+        using Idx = std::size_t;
+        using Vec2 =alpaka::Vec<Dim2, Idx>;
+        std::cout<<"2921"<<std::endl;
+        //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyAccBoundaryKernel,Vec2{dimBlock,dimGrid},false);
+        
+        
+        // CUDA Code
+        ApplyAccelerationBoundaryConditionsForNodes_kernel<<<dimGrid, dimBlock>>>
         (domain->numSymmX,
          domain->xdd.raw(),
          domain->symmX.raw());
+    }
+      
 
     dimGrid = PAD_DIV(domain->numSymmY,dimBlock);
-    if (domain->numSymmY > 0)
+    if (domain->numSymmY > 0){
+    
+       // Alpaka Code
+       using ApplyAccBoundaryConditionsNodes = lulesh_port_kernels::ApplyAccelerationBoundaryConditionsForNodes_kernel_class;
+       ApplyAccBoundaryConditionsNodes ApplyAccBoundaryKernel(
+            domain->numSymmY,
+            domain->ydd.raw(),
+            domain->symmY.raw()
+        );
+        using Dim2 = alpaka::DimInt<2>;
+        using Idx = std::size_t;
+        using Vec2 =alpaka::Vec<Dim2, Idx>;
+        std::cout<<"2944"<<std::endl;
+        //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyAccBoundaryKernel,Vec2{dimBlock,dimGrid},true);
+    
+    
+      // CUDA Code
       ApplyAccelerationBoundaryConditionsForNodes_kernel<<<dimGrid, dimBlock>>>
         (domain->numSymmY,
          domain->ydd.raw(),
          domain->symmY.raw());
-
+    }
+    
+    
     dimGrid = PAD_DIV(domain->numSymmZ,dimBlock);
-    if (domain->numSymmZ > 0)
+    if (domain->numSymmZ > 0){
+    
+       // Alpaka Code
+       using ApplyAccBoundaryConditionsNodes = lulesh_port_kernels::ApplyAccelerationBoundaryConditionsForNodes_kernel_class;
+       ApplyAccBoundaryConditionsNodes ApplyAccBoundaryKernel(
+            domain->numSymmZ,
+            domain->zdd.raw(),
+            domain->symmZ.raw()
+        );
+        using Dim2 = alpaka::DimInt<2>;
+        using Idx = std::size_t;
+        using Vec2 =alpaka::Vec<Dim2, Idx>;
+        std::cout<<"2969"<<std::endl;
+        //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyAccBoundaryKernel,Vec2{dimBlock,dimGrid},true);
+    
+    
+    
+    
+      // CUDA Code
       ApplyAccelerationBoundaryConditionsForNodes_kernel<<<dimGrid, dimBlock>>>
         (domain->numSymmZ,
          domain->zdd.raw(),
          domain->symmZ.raw());
+         
+    }
+    std::cout<<"2979"<<std::endl;
 }
 
 
@@ -2965,7 +3022,33 @@ void CalcPositionAndVelocityForNodes(const Real_t u_cut, Domain* domain)
 {
     Index_t dimBlock = 128;
     Index_t dimGrid = PAD_DIV(domain->numNode,dimBlock);
-
+    
+    // Alpaka Code
+    using CalcPositionAndVelocityForNodes = lulesh_port_kernels::CalcPositionAndVelocityForNodes_kernel_class;
+    CalcPositionAndVelocityForNodes CalcPosAndVeloKernel(
+        domain->numNode,
+        domain->deltatime_h,
+        u_cut,
+        domain->x.raw(),
+        domain->y.raw(),
+        domain->z.raw(),
+        domain->xd.raw(),
+        domain->yd.raw(),
+        domain->zd.raw(),
+        domain->xdd.raw(),
+        domain->ydd.raw(),
+        domain->zdd.raw()
+    );
+    
+    using Dim2 = alpaka::DimInt<2>;
+    using Idx = std::size_t;
+    using Vec2 =alpaka::Vec<Dim2, Idx>;
+    std::cout<<"3045"<<std::endl;
+    alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcPosAndVeloKernel,Vec2{dimBlock,dimGrid},true);
+    std::cout<<"3047"<<std::endl;
+    
+    
+    // CUDA Code
     CalcPositionAndVelocityForNodes_kernel<<<dimGrid, dimBlock>>>
         (domain->numNode,domain->deltatime_h,u_cut,
          domain->x.raw(),domain->y.raw(),domain->z.raw(),
