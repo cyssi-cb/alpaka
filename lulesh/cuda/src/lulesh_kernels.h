@@ -8,7 +8,317 @@ namespace lulesh_port_kernels{
 
 using Index_t= std::int32_t;
 using Int_t=std::int32_t;
+//this needs adjustment when using float
+inline Real_t  FMAX(Real_t  arg1,Real_t  arg2) { return fmax(arg1,arg2) ; }
+Real_t AreaFace( const Real_t x0, const Real_t x1,
+                 const Real_t x2, const Real_t x3,
+                 const Real_t y0, const Real_t y1,
+                 const Real_t y2, const Real_t y3,
+                 const Real_t z0, const Real_t z1,
+                 const Real_t z2, const Real_t z3)
+{
+   Real_t fx = (x2 - x0) - (x3 - x1);
+   Real_t fy = (y2 - y0) - (y3 - y1);
+   Real_t fz = (z2 - z0) - (z3 - z1);
+   Real_t gx = (x2 - x0) + (x3 - x1);
+   Real_t gy = (y2 - y0) + (y3 - y1);
+   Real_t gz = (z2 - z0) + (z3 - z1); 
+   Real_t temp = (fx * gx + fy * gy + fz * gz);
+   Real_t area =
+      (fx * fx + fy * fy + fz * fz) *
+      (gx * gx + gy * gy + gz * gz) -
+      temp * temp;
+   return area ;
+}
 
+void CalcElemVelocityGradient( const Real_t* const xvel,
+                                const Real_t* const yvel,
+                                const Real_t* const zvel,
+                                const Real_t b[][8],
+                                const Real_t detJ,
+                                Real_t* const d )
+{
+  const Real_t inv_detJ = Real_t(1.0) / detJ ;
+  Real_t dyddx, dxddy, dzddx, dxddz, dzddy, dyddz;
+  const Real_t* const pfx = b[0];
+  const Real_t* const pfy = b[1];
+  const Real_t* const pfz = b[2];
+ 
+  Real_t tmp1 = (xvel[0]-xvel[6]);
+  Real_t tmp2 = (xvel[1]-xvel[7]);
+  Real_t tmp3 = (xvel[2]-xvel[4]);
+  Real_t tmp4 = (xvel[3]-xvel[5]);
+
+
+  d[0] = inv_detJ *  ( pfx[0] * tmp1
+                     + pfx[1] * tmp2
+                     + pfx[2] * tmp3
+                     + pfx[3] * tmp4);
+
+  dxddy  = inv_detJ * ( pfy[0] * tmp1
+                      + pfy[1] * tmp2
+                      + pfy[2] * tmp3
+                      + pfy[3] * tmp4);
+
+  dxddz  = inv_detJ * ( pfz[0] * tmp1
+                      + pfz[1] * tmp2
+                      + pfz[2] * tmp3
+                      + pfz[3] * tmp4);
+
+  tmp1 = (yvel[0]-yvel[6]);
+  tmp2 = (yvel[1]-yvel[7]);
+  tmp3 = (yvel[2]-yvel[4]);
+  tmp4 = (yvel[3]-yvel[5]);
+
+  d[1] = inv_detJ *  ( pfy[0] * tmp1
+                     + pfy[1] * tmp2
+                     + pfy[2] * tmp3
+                     + pfy[3] * tmp4);
+
+  dyddx  = inv_detJ * ( pfx[0] * tmp1 
+                      + pfx[1] * tmp2
+                      + pfx[2] * tmp3
+                      + pfx[3] * tmp4);
+
+  dyddz  = inv_detJ * ( pfz[0] * tmp1
+                      + pfz[1] * tmp2
+                      + pfz[2] * tmp3
+                      + pfz[3] * tmp4);
+
+  tmp1 = (zvel[0]-zvel[6]);
+  tmp2 = (zvel[1]-zvel[7]);
+  tmp3 = (zvel[2]-zvel[4]);
+  tmp4 = (zvel[3]-zvel[5]);
+
+  d[2] = inv_detJ * ( pfz[0] * tmp1
+                     + pfz[1] * tmp2
+                     + pfz[2] * tmp3
+                     + pfz[3] * tmp4);
+
+  dzddx  = inv_detJ * ( pfx[0] * tmp1 
+                      + pfx[1] * tmp2
+                      + pfx[2] * tmp3
+                      + pfx[3] * tmp4);
+
+  dzddy  = inv_detJ * ( pfy[0] * tmp1
+                      + pfy[1] * tmp2
+                      + pfy[2] * tmp3
+                      + pfy[3] * tmp4);
+
+  d[5]  = Real_t( .5) * ( dxddy + dyddx );
+  d[4]  = Real_t( .5) * ( dxddz + dzddx );
+  d[3]  = Real_t( .5) * ( dzddy + dyddz );
+}
+void CalcMonoGradient(Real_t *x, Real_t *y, Real_t *z,
+                      Real_t *xv, Real_t *yv, Real_t *zv,
+                      Real_t vol, 
+                      Real_t *delx_zeta, 
+                      Real_t *delv_zeta,
+                      Real_t *delx_xi,
+                      Real_t *delv_xi,
+                      Real_t *delx_eta,
+                      Real_t *delv_eta)
+{
+
+   #define SUM4(a,b,c,d) (a + b + c + d)
+   const Real_t ptiny = Real_t(1.e-36) ;
+   Real_t ax,ay,az ;
+   Real_t dxv,dyv,dzv ;
+
+   Real_t norm = Real_t(1.0) / ( vol + ptiny ) ;
+
+   Real_t dxj = Real_t(-0.25)*(SUM4(x[0],x[1],x[5],x[4]) - SUM4(x[3],x[2],x[6],x[7])) ;
+   Real_t dyj = Real_t(-0.25)*(SUM4(y[0],y[1],y[5],y[4]) - SUM4(y[3],y[2],y[6],y[7])) ;
+   Real_t dzj = Real_t(-0.25)*(SUM4(z[0],z[1],z[5],z[4]) - SUM4(z[3],z[2],z[6],z[7])) ;
+
+   Real_t dxi = Real_t( 0.25)*(SUM4(x[1],x[2],x[6],x[5]) - SUM4(x[0],x[3],x[7],x[4])) ;
+   Real_t dyi = Real_t( 0.25)*(SUM4(y[1],y[2],y[6],y[5]) - SUM4(y[0],y[3],y[7],y[4])) ;
+   Real_t dzi = Real_t( 0.25)*(SUM4(z[1],z[2],z[6],z[5]) - SUM4(z[0],z[3],z[7],z[4])) ;
+
+   Real_t dxk = Real_t( 0.25)*(SUM4(x[4],x[5],x[6],x[7]) - SUM4(x[0],x[1],x[2],x[3])) ;
+   Real_t dyk = Real_t( 0.25)*(SUM4(y[4],y[5],y[6],y[7]) - SUM4(y[0],y[1],y[2],y[3])) ;
+   Real_t dzk = Real_t( 0.25)*(SUM4(z[4],z[5],z[6],z[7]) - SUM4(z[0],z[1],z[2],z[3])) ;
+
+   /* find delvk and delxk ( i cross j ) */
+   ax = dyi*dzj - dzi*dyj ;
+   ay = dzi*dxj - dxi*dzj ;
+   az = dxi*dyj - dyi*dxj ;
+
+   *delx_zeta = vol / sqrt(ax*ax + ay*ay + az*az + ptiny) ; 
+
+   ax *= norm ;
+   ay *= norm ;
+   az *= norm ; 
+
+   dxv = Real_t(0.25)*(SUM4(xv[4],xv[5],xv[6],xv[7]) - SUM4(xv[0],xv[1],xv[2],xv[3])) ;
+   dyv = Real_t(0.25)*(SUM4(yv[4],yv[5],yv[6],yv[7]) - SUM4(yv[0],yv[1],yv[2],yv[3])) ;
+   dzv = Real_t(0.25)*(SUM4(zv[4],zv[5],zv[6],zv[7]) - SUM4(zv[0],zv[1],zv[2],zv[3])) ; 
+
+   *delv_zeta = ax*dxv + ay*dyv + az*dzv ;
+
+   /* find delxi and delvi ( j cross k ) */
+
+   ax = dyj*dzk - dzj*dyk ;
+   ay = dzj*dxk - dxj*dzk ;
+   az = dxj*dyk - dyj*dxk ;
+
+   *delx_xi = vol / sqrt(ax*ax + ay*ay + az*az + ptiny) ;
+
+   ax *= norm ;
+   ay *= norm ;
+   az *= norm ;
+
+   dxv = Real_t(0.25)*(SUM4(xv[1],xv[2],xv[6],xv[5]) - SUM4(xv[0],xv[3],xv[7],xv[4])) ;
+   dyv = Real_t(0.25)*(SUM4(yv[1],yv[2],yv[6],yv[5]) - SUM4(yv[0],yv[3],yv[7],yv[4])) ;
+   dzv = Real_t(0.25)*(SUM4(zv[1],zv[2],zv[6],zv[5]) - SUM4(zv[0],zv[3],zv[7],zv[4])) ;
+
+   *delv_xi = ax*dxv + ay*dyv + az*dzv ;
+
+   /* find delxj and delvj ( k cross i ) */
+
+   ax = dyk*dzi - dzk*dyi ;
+   ay = dzk*dxi - dxk*dzi ;
+   az = dxk*dyi - dyk*dxi ;
+
+   *delx_eta = vol / sqrt(ax*ax + ay*ay + az*az + ptiny) ;
+
+   ax *= norm ;
+   ay *= norm ;
+   az *= norm ;
+
+   dxv = Real_t(-0.25)*(SUM4(xv[0],xv[1],xv[5],xv[4]) - SUM4(xv[3],xv[2],xv[6],xv[7])) ;
+   dyv = Real_t(-0.25)*(SUM4(yv[0],yv[1],yv[5],yv[4]) - SUM4(yv[3],yv[2],yv[6],yv[7])) ;
+   dzv = Real_t(-0.25)*(SUM4(zv[0],zv[1],zv[5],zv[4]) - SUM4(zv[3],zv[2],zv[6],zv[7])) ;
+
+   *delv_eta = ax*dxv + ay*dyv + az*dzv ;
+#undef SUM4
+}
+
+Real_t CalcElemCharacteristicLength( const Real_t x[8],
+                                     const Real_t y[8],
+                                     const Real_t z[8],
+                                     const Real_t volume)
+{
+   Real_t a, charLength = Real_t(0.0);
+
+   a = lulesh_port_kernels::AreaFace(x[0],x[1],x[2],x[3],
+                y[0],y[1],y[2],y[3],
+                z[0],z[1],z[2],z[3]) ; // 38
+   charLength = lulesh_port_kernels::FMAX(a,charLength) ;
+
+   a = lulesh_port_kernels::AreaFace(x[4],x[5],x[6],x[7],
+                y[4],y[5],y[6],y[7],
+                z[4],z[5],z[6],z[7]) ;
+   charLength = lulesh_port_kernels::FMAX(a,charLength) ;
+
+   a = lulesh_port_kernels::AreaFace(x[0],x[1],x[5],x[4],
+                y[0],y[1],y[5],y[4],
+                z[0],z[1],z[5],z[4]) ;
+   charLength = lulesh_port_kernels::FMAX(a,charLength) ;
+
+   a = lulesh_port_kernels::AreaFace(x[1],x[2],x[6],x[5],
+                y[1],y[2],y[6],y[5],
+                z[1],z[2],z[6],z[5]) ;
+   charLength = lulesh_port_kernels::FMAX(a,charLength) ;
+
+   a =lulesh_port_kernels::AreaFace(x[2],x[3],x[7],x[6],
+                y[2],y[3],y[7],y[6],
+                z[2],z[3],z[7],z[6]) ;
+   charLength = lulesh_port_kernels::FMAX(a,charLength) ;
+
+   a = lulesh_port_kernels::AreaFace(x[3],x[0],x[4],x[7],
+                y[3],y[0],y[4],y[7],
+                z[3],z[0],z[4],z[7]) ;
+   charLength = lulesh_port_kernels::FMAX(a,charLength) ;
+
+   charLength = Real_t(4.0) * volume / sqrt(charLength);
+
+   return charLength;
+}
+static Real_t CalcElemVolume( const Real_t x0, const Real_t x1,
+               const Real_t x2, const Real_t x3,
+               const Real_t x4, const Real_t x5,
+               const Real_t x6, const Real_t x7,
+               const Real_t y0, const Real_t y1,
+               const Real_t y2, const Real_t y3,
+               const Real_t y4, const Real_t y5,
+               const Real_t y6, const Real_t y7,
+               const Real_t z0, const Real_t z1,
+               const Real_t z2, const Real_t z3,
+               const Real_t z4, const Real_t z5,
+               const Real_t z6, const Real_t z7 )
+{
+   Real_t twelveth = Real_t(1.0)/Real_t(12.0);
+  Real_t dx61 = x6 - x1;
+  Real_t dy61 = y6 - y1;
+  Real_t dz61 = z6 - z1;
+
+  Real_t dx70 = x7 - x0;
+  Real_t dy70 = y7 - y0;
+  Real_t dz70 = z7 - z0;
+
+  Real_t dx63 = x6 - x3;
+  Real_t dy63 = y6 - y3;
+  Real_t dz63 = z6 - z3;
+
+  Real_t dx20 = x2 - x0;
+  Real_t dy20 = y2 - y0;
+  Real_t dz20 = z2 - z0;
+
+  Real_t dx50 = x5 - x0;
+  Real_t dy50 = y5 - y0;
+  Real_t dz50 = z5 - z0;
+
+  Real_t dx64 = x6 - x4;
+  Real_t dy64 = y6 - y4;
+  Real_t dz64 = z6 - z4;
+
+  Real_t dx31 = x3 - x1;
+  Real_t dy31 = y3 - y1;
+  Real_t dz31 = z3 - z1;
+
+  Real_t dx72 = x7 - x2;
+  Real_t dy72 = y7 - y2;
+  Real_t dz72 = z7 - z2;
+
+  Real_t dx43 = x4 - x3;
+  Real_t dy43 = y4 - y3;
+  Real_t dz43 = z4 - z3;
+
+  Real_t dx57 = x5 - x7;
+  Real_t dy57 = y5 - y7;
+  Real_t dz57 = z5 - z7;
+
+  Real_t dx14 = x1 - x4;
+  Real_t dy14 = y1 - y4;
+  Real_t dz14 = z1 - z4;
+
+  Real_t dx25 = x2 - x5;
+  Real_t dy25 = y2 - y5;
+  Real_t dz25 = z2 - z5;
+
+#define TRIPLE_PRODUCT(x1, y1, z1, x2, y2, z2, x3, y3, z3) \
+   ((x1)*((y2)*(z3) - (z2)*(y3)) + (x2)*((z1)*(y3) - (y1)*(z3)) + (x3)*((y1)*(z2) - (z1)*(y2)))
+
+
+  // 11 + 3*14
+  Real_t volume =
+    TRIPLE_PRODUCT(dx31 + dx72, dx63, dx20,
+       dy31 + dy72, dy63, dy20,
+       dz31 + dz72, dz63, dz20) +
+    TRIPLE_PRODUCT(dx43 + dx57, dx64, dx70,
+       dy43 + dy57, dy64, dy70,
+       dz43 + dz57, dz64, dz70) +
+    TRIPLE_PRODUCT(dx14 + dx25, dx61, dx50,
+       dy14 + dy25, dy61, dy50,
+       dz14 + dz25, dz61, dz50);
+
+#undef TRIPLE_PRODUCT
+
+  volume *= twelveth;
+
+  return volume ;
+}
 auto static inline SumElemFaceNormal(Real_t *normalX0, Real_t *normalY0, Real_t *normalZ0,
                        Real_t *normalX1, Real_t *normalY1, Real_t *normalZ1,
                        Real_t *normalX2, Real_t *normalY2, Real_t *normalZ2,
@@ -940,5 +1250,192 @@ class CalcVolumeForceForElems_kernel_class{
       }
       // If elem < numElem
 };//end alpaka function
+};//end class
+class CalcKinematicsAndMonotonicQGradient_kernel_class{
+   
+   Index_t numElem, padded_numElem;
+   const Real_t dt;
+   const Index_t* __restrict__ nodelist;
+   const Real_t* __restrict__ volo, * __restrict__ v;
+
+    const Real_t* __restrict__ x;
+    const Real_t* __restrict__ y; 
+    const Real_t* __restrict__ z;
+    const Real_t* __restrict__ xd; 
+    const Real_t* __restrict__ yd; 
+    const Real_t* __restrict__ zd;
+    Real_t* __restrict__ vnew;
+    Real_t* __restrict__ delv;
+    Real_t* __restrict__ arealg;
+    Real_t* __restrict__ dxx;
+    Real_t* __restrict__ dyy;
+    Real_t* __restrict__ dzz;
+    Real_t* __restrict__ vdov;
+    Real_t* __restrict__ delx_zeta; 
+    Real_t* __restrict__ delv_zeta;
+    Real_t* __restrict__ delx_xi; 
+    Real_t* __restrict__ delv_xi; 
+    Real_t* __restrict__ delx_eta;
+    Real_t* __restrict__ delv_eta;
+    Index_t* __restrict__ bad_vol;
+    const Index_t num_threads;
+   public:
+   CalcKinematicsAndMonotonicQGradient_kernel_class(
+   Index_t numElem, Index_t padded_numElem, const Real_t dt,
+    const Index_t* __restrict__ nodelist, const Real_t* __restrict__ volo, const Real_t* __restrict__ v,
+
+    const Real_t* __restrict__ x, 
+    const Real_t* __restrict__ y, 
+    const Real_t* __restrict__ z,
+    const Real_t* __restrict__ xd, 
+    const Real_t* __restrict__ yd, 
+    const Real_t* __restrict__ zd,
+    Real_t* __restrict__ vnew,
+    Real_t* __restrict__ delv,
+    Real_t* __restrict__ arealg,
+    Real_t* __restrict__ dxx,
+    Real_t* __restrict__ dyy,
+    Real_t* __restrict__ dzz,
+    Real_t* __restrict__ vdov,
+    Real_t* __restrict__ delx_zeta, 
+    Real_t* __restrict__ delv_zeta,
+    Real_t* __restrict__ delx_xi, 
+    Real_t* __restrict__ delv_xi, 
+    Real_t* __restrict__ delx_eta,
+    Real_t* __restrict__ delv_eta,
+    Index_t* __restrict__ bad_vol,
+    const Index_t num_threads
+    ):numElem(numElem),padded_numElem(padded_numElem),dt(dt),
+      nodelist(nodelist),volo(volo),v(v),x(x),y(y),z(z),xd(xd),yd(yd),zd(zd),vnew(vnew),delv(delv),arealg(arealg),dxx(dxx),dyy(dyy),vdov(vdov),delx_zeta(delx_zeta),
+      delv_zeta(delv_zeta),delx_xi(delx_xi),delv_xi(delv_xi),delx_eta(delx_eta),delv_eta(delv_eta),bad_vol(bad_vol),num_threads(num_threads){};
+   template<typename TAcc>
+   ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
+    {
+      Real_t B[3][8] ; /** shape function derivatives */
+   Index_t nodes[8] ;
+   Real_t x_local[8] ;
+   Real_t y_local[8] ;
+   Real_t z_local[8] ;
+   Real_t xd_local[8] ;
+   Real_t yd_local[8] ;
+   Real_t zd_local[8] ;
+   Real_t D[6];
+   using Dim = alpaka::Dim<TAcc>;
+   using Idx = alpaka::Idx<TAcc>;
+   using Vec = alpaka::Vec<Dim, Idx>;
+   using Vec1 = alpaka::Vec<alpaka::DimInt<1u>, Idx>;
+
+   Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+   Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+   Index_t k=static_cast<unsigned>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+
+  if ( k < num_threads) {
+    Real_t volume ;
+    Real_t relativeVolume ;
+
+
+    //#pragma unroll
+    for( Index_t lnode=0 ; lnode<8 ; ++lnode )
+    {
+      Index_t gnode = nodelist[k+lnode*padded_numElem];
+      nodes[lnode] = gnode;
+    }
+
+    //#pragma unroll
+    for( Index_t lnode=0 ; lnode<8 ; ++lnode )
+      x_local[lnode] = x[nodes[lnode]];
+
+    //#pragma unroll
+    for( Index_t lnode=0 ; lnode<8 ; ++lnode )
+      y_local[lnode] = y[nodes[lnode]];
+
+    //#pragma unroll
+    for( Index_t lnode=0 ; lnode<8 ; ++lnode )
+      z_local[lnode] = z[nodes[lnode]];
+
+
+
+    // volume calculations
+    printf("1,");
+    volume = lulesh_port_kernels::CalcElemVolume(x_local[0], x_local[1], x_local[2], x_local[3], x_local[4], x_local[5], x_local[6], x_local[7], 
+    y_local[0], y_local[1], y_local[2], y_local[3], y_local[4], y_local[5], y_local[6], y_local[7], 
+    z_local[0], z_local[1], z_local[2], z_local[3], z_local[4], z_local[5], z_local[6], z_local[7]); 
+    printf("2,");
+    relativeVolume = volume / volo[k] ; 
+    vnew[k] = relativeVolume ;
+
+    delv[k] = relativeVolume - v[k] ;
+    // set characteristic length
+    arealg[k] = lulesh_port_kernels::CalcElemCharacteristicLength(x_local,y_local,z_local,volume);
+
+    // get nodal velocities from global array and copy into local arrays.
+    //#pragma unroll
+    for( Index_t lnode=0 ; lnode<8 ; ++lnode )
+    {
+      Index_t gnode = nodes[lnode];
+      xd_local[lnode] = xd[gnode];
+      yd_local[lnode] = yd[gnode];
+      zd_local[lnode] = zd[gnode];
+    }
+
+    Real_t dt2 = Real_t(0.5) * dt;
+
+    //#pragma unroll
+    for ( Index_t j=0 ; j<8 ; ++j )
+    {
+       x_local[j] -= dt2 * xd_local[j];
+       y_local[j] -= dt2 * yd_local[j];
+       z_local[j] -= dt2 * zd_local[j]; 
+    }
+
+    Real_t detJ;
+
+    lulesh_port_kernels::CalcElemShapeFunctionDerivatives(x_local,y_local,z_local,B,&detJ );
+
+    lulesh_port_kernels::CalcElemVelocityGradient(xd_local,yd_local,zd_local,B,detJ,D);
+
+    // ------------------------
+    // CALC LAGRANGE ELEM 2
+    // ------------------------
+
+    // calc strain rate and apply as constraint (only done in FB element)
+    Real_t vdovNew = D[0] + D[1] + D[2];
+    Real_t vdovthird = vdovNew/Real_t(3.0) ;
+    
+    // make the rate of deformation tensor deviatoric
+    vdov[k] = vdovNew ;
+    dxx[k] = D[0] - vdovthird ;
+    dyy[k] = D[1] - vdovthird ;
+    dzz[k] = D[2] - vdovthird ; 
+
+    // ------------------------
+    // CALC MONOTONIC Q GRADIENT
+    // ------------------------
+    Real_t vol = volo[k]*vnew[k];
+
+   // Undo x_local update
+    //#pragma unroll
+    for ( Index_t j=0 ; j<8 ; ++j ) {
+       x_local[j] += dt2 * xd_local[j];
+       y_local[j] += dt2 * yd_local[j];
+       z_local[j] += dt2 * zd_local[j]; 
+    }
+
+   lulesh_port_kernels::CalcMonoGradient(x_local,y_local,z_local,xd_local,yd_local,zd_local,
+                          vol, 
+                          &delx_zeta[k],&delv_zeta[k],&delx_xi[k],
+                          &delv_xi[k], &delx_eta[k], &delv_eta[k]);
+
+  //Check for bad volume 
+  if (relativeVolume < 0)
+    *bad_vol = k;
+  }
+
+
+
+
+
+
+    }//end function
 };//end class
 }//end namespace
