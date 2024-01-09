@@ -235,7 +235,7 @@ Real_t CalcElemCharacteristicLength( const Real_t x[8],
 
    return charLength;
 }
-static Real_t CalcElemVolume( const Real_t x0, const Real_t x1,
+__host__ __device__ Real_t CalcElemVolume( const Real_t x0, const Real_t x1,
                const Real_t x2, const Real_t x3,
                const Real_t x4, const Real_t x5,
                const Real_t x6, const Real_t x7,
@@ -248,6 +248,7 @@ static Real_t CalcElemVolume( const Real_t x0, const Real_t x1,
                const Real_t z4, const Real_t z5,
                const Real_t z6, const Real_t z7 )
 {
+   printf("h\n");
    Real_t twelveth = Real_t(1.0)/Real_t(12.0);
   Real_t dx61 = x6 - x1;
   Real_t dy61 = y6 - y1;
@@ -316,6 +317,7 @@ static Real_t CalcElemVolume( const Real_t x0, const Real_t x1,
 #undef TRIPLE_PRODUCT
 
   volume *= twelveth;
+  printf("%f, ",volume);
 
   return volume ;
 }
@@ -1356,7 +1358,7 @@ class CalcKinematicsAndMonotonicQGradient_kernel_class{
 
 
     // volume calculations
-    printf("1,");
+    //printf("1,");
     volume = lulesh_port_kernels::CalcElemVolume(x_local[0], x_local[1], x_local[2], x_local[3], x_local[4], x_local[5], x_local[6], x_local[7], 
     y_local[0], y_local[1], y_local[2], y_local[3], y_local[4], y_local[5], y_local[6], y_local[7], 
     z_local[0], z_local[1], z_local[2], z_local[3], z_local[4], z_local[5], z_local[6], z_local[7]); 
