@@ -9,13 +9,13 @@ namespace lulesh_port_kernels{
 using Index_t= std::int32_t;
 using Int_t=std::int32_t;
 //this needs adjustment when using float
-inline Real_t  FMAX(Real_t  arg1,Real_t  arg2) { return fmax(arg1,arg2) ; }
-Real_t AreaFace( const Real_t x0, const Real_t x1,
+ALPAKA_FN_ACC inline auto FMAX(Real_t  arg1,Real_t  arg2)-> Real_t {return FMAX(arg1,arg2) ; }
+ALPAKA_FN_ACC auto AreaFace( const Real_t x0, const Real_t x1,
                  const Real_t x2, const Real_t x3,
                  const Real_t y0, const Real_t y1,
                  const Real_t y2, const Real_t y3,
                  const Real_t z0, const Real_t z1,
-                 const Real_t z2, const Real_t z3)
+                 const Real_t z2, const Real_t z3) -> Real_t
 {
    Real_t fx = (x2 - x0) - (x3 - x1);
    Real_t fy = (y2 - y0) - (y3 - y1);
@@ -31,12 +31,12 @@ Real_t AreaFace( const Real_t x0, const Real_t x1,
    return area ;
 }
 
-void CalcElemVelocityGradient( const Real_t* const xvel,
+ALPAKA_FN_ACC auto CalcElemVelocityGradient( const Real_t* const xvel,
                                 const Real_t* const yvel,
                                 const Real_t* const zvel,
                                 const Real_t b[][8],
                                 const Real_t detJ,
-                                Real_t* const d )
+                                Real_t* const d ) -> void
 {
   const Real_t inv_detJ = Real_t(1.0) / detJ ;
   Real_t dyddx, dxddy, dzddx, dxddz, dzddy, dyddz;
@@ -109,7 +109,7 @@ void CalcElemVelocityGradient( const Real_t* const xvel,
   d[4]  = Real_t( .5) * ( dxddz + dzddx );
   d[3]  = Real_t( .5) * ( dzddy + dyddz );
 }
-void CalcMonoGradient(Real_t *x, Real_t *y, Real_t *z,
+ALPAKA_FN_ACC auto CalcMonoGradient(Real_t *x, Real_t *y, Real_t *z,
                       Real_t *xv, Real_t *yv, Real_t *zv,
                       Real_t vol, 
                       Real_t *delx_zeta, 
@@ -117,7 +117,7 @@ void CalcMonoGradient(Real_t *x, Real_t *y, Real_t *z,
                       Real_t *delx_xi,
                       Real_t *delv_xi,
                       Real_t *delx_eta,
-                      Real_t *delv_eta)
+                      Real_t *delv_eta) -> void
 {
 
    #define SUM4(a,b,c,d) (a + b + c + d)
@@ -194,10 +194,10 @@ void CalcMonoGradient(Real_t *x, Real_t *y, Real_t *z,
 #undef SUM4
 }
 
-Real_t CalcElemCharacteristicLength( const Real_t x[8],
+ALPAKA_FN_ACC auto CalcElemCharacteristicLength( const Real_t x[8],
                                      const Real_t y[8],
                                      const Real_t z[8],
-                                     const Real_t volume)
+                                     const Real_t volume)-> Real_t
 {
    Real_t a, charLength = Real_t(0.0);
 
@@ -235,7 +235,7 @@ Real_t CalcElemCharacteristicLength( const Real_t x[8],
 
    return charLength;
 }
-__host__ __device__ Real_t CalcElemVolume( const Real_t x0, const Real_t x1,
+ALPAKA_FN_ACC auto CalcElemVolume( const Real_t x0, const Real_t x1,
                const Real_t x2, const Real_t x3,
                const Real_t x4, const Real_t x5,
                const Real_t x6, const Real_t x7,
@@ -246,7 +246,7 @@ __host__ __device__ Real_t CalcElemVolume( const Real_t x0, const Real_t x1,
                const Real_t z0, const Real_t z1,
                const Real_t z2, const Real_t z3,
                const Real_t z4, const Real_t z5,
-               const Real_t z6, const Real_t z7 )
+               const Real_t z6, const Real_t z7 ) -> Real_t
 {
    printf("h\n");
    Real_t twelveth = Real_t(1.0)/Real_t(12.0);
@@ -321,7 +321,7 @@ __host__ __device__ Real_t CalcElemVolume( const Real_t x0, const Real_t x1,
 
   return volume ;
 }
-auto static inline SumElemFaceNormal(Real_t *normalX0, Real_t *normalY0, Real_t *normalZ0,
+ALPAKA_FN_ACC auto static inline SumElemFaceNormal(Real_t *normalX0, Real_t *normalY0, Real_t *normalZ0,
                        Real_t *normalX1, Real_t *normalY1, Real_t *normalZ1,
                        Real_t *normalX2, Real_t *normalY2, Real_t *normalZ2,
                        Real_t *normalX3, Real_t *normalY3, Real_t *normalZ3,
@@ -355,7 +355,7 @@ auto static inline SumElemFaceNormal(Real_t *normalX0, Real_t *normalY0, Real_t 
    *normalZ2 += areaZ;
    *normalZ3 += areaZ;
 }
-static inline auto VoluDer(const Real_t x0, const Real_t x1, const Real_t x2,
+ALPAKA_FN_ACC static inline auto VoluDer(const Real_t x0, const Real_t x1, const Real_t x2,
              const Real_t x3, const Real_t x4, const Real_t x5,
              const Real_t y0, const Real_t y1, const Real_t y2,
              const Real_t y3, const Real_t y4, const Real_t y5,
@@ -384,7 +384,7 @@ static inline auto VoluDer(const Real_t x0, const Real_t x1, const Real_t x2,
    *dvdy *= twelfth;
    *dvdz *= twelfth;
 }
-static inline auto CalcElemFBHourglassForce(Real_t *xd, Real_t *yd, Real_t *zd,  Real_t *hourgam0,
+ALPAKA_FN_ACC static inline auto CalcElemFBHourglassForce(Real_t *xd, Real_t *yd, Real_t *zd,  Real_t *hourgam0,
                               Real_t *hourgam1, Real_t *hourgam2, Real_t *hourgam3,
                               Real_t *hourgam4, Real_t *hourgam5, Real_t *hourgam6,
                               Real_t *hourgam7, Real_t coefficient,
@@ -565,7 +565,7 @@ static inline auto CalcElemFBHourglassForce(Real_t *xd, Real_t *yd, Real_t *zd, 
       (hourgam7[i00] * h00 + hourgam7[i01] * h01 +
        hourgam7[i02] * h02 + hourgam7[i03] * h03);
 }
-static inline
+ALPAKA_FN_ACC static inline
 auto CalcElemNodeNormals(Real_t pfx[8],
                          Real_t pfy[8],
                          Real_t pfz[8],
@@ -621,7 +621,7 @@ auto CalcElemNodeNormals(Real_t pfx[8],
                   x[4], y[4], z[4], x[7], y[7], z[7],
                   x[6], y[6], z[6], x[5], y[5], z[5]);
 }
-static auto inline CalcElemShapeFunctionDerivatives( const Real_t* const x,
+ALPAKA_FN_ACC static auto inline CalcElemShapeFunctionDerivatives( const Real_t* const x,
                                        const Real_t* const y,
                                        const Real_t* const z,
                                        Real_t b[][8],
@@ -717,7 +717,7 @@ static auto inline CalcElemShapeFunctionDerivatives( const Real_t* const x,
   /* calculate jacobian determinant (volume) */
   *volume = Real_t(8.) * ( fjxet * cjxet + fjyet * cjyet + fjzet * cjzet);
 }
-auto inline CalcHourglassModes(const Real_t xn[8], const Real_t yn[8], const Real_t zn[8],
+ALPAKA_FN_ACC auto inline CalcHourglassModes(const Real_t xn[8], const Real_t yn[8], const Real_t zn[8],
                         const Real_t dvdxn[8], const Real_t dvdyn[8], const Real_t dvdzn[8],
                         Real_t hourgam[8][4], Real_t volinv) -> void
 {
@@ -772,7 +772,7 @@ auto inline CalcHourglassModes(const Real_t xn[8], const Real_t yn[8], const Rea
     hourgam[7][3] = -1.0 - volinv*(dvdxn[7]*hourmodx + dvdyn[7]*hourmody + dvdzn[7]*hourmodz);
 
 }
-auto CalcElemVolumeDerivative(Real_t dvdx[8],
+ALPAKA_FN_ACC auto CalcElemVolumeDerivative(Real_t dvdx[8],
                               Real_t dvdy[8],
                               Real_t dvdz[8],
                               const Real_t x[8],
