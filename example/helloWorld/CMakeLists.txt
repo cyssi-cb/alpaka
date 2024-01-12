@@ -15,7 +15,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(_TARGET_NAME helloWorld)
 
-project(${_TARGET_NAME} LANGUAGES CXX)
+project(${_TARGET_NAME} LANGUAGES CUDA CXX)
 
 #-------------------------------------------------------------------------------
 # Find alpaka.
