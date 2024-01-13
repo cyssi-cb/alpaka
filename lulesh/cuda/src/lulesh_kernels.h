@@ -291,7 +291,7 @@ ALPAKA_FN_ACC auto CalcElemVolume( const Real_t x0, const Real_t x1,
                const Real_t z4, const Real_t z5,
                const Real_t z6, const Real_t z7 ) -> Real_t
 {
-   printf("h\n");
+   //printf("h\n");
    Real_t twelveth = Real_t(1.0)/Real_t(12.0);
   Real_t dx61 = x6 - x1;
   Real_t dy61 = y6 - y1;
@@ -356,15 +356,14 @@ ALPAKA_FN_ACC auto CalcElemVolume( const Real_t x0, const Real_t x1,
     TRIPLE_PRODUCT(dx14 + dx25, dx61, dx50,
        dy14 + dy25, dy61, dy50,
        dz14 + dz25, dz61, dz50);
-
 #undef TRIPLE_PRODUCT
 
   volume *= twelveth;
-  printf("%f, ",volume);
+  //printf("%f, ",volume);
 
   return volume ;
 }
-ALPAKA_FN_ACC auto static inline SumElemFaceNormal(Real_t *normalX0, Real_t *normalY0, Real_t *normalZ0,
+ALPAKA_FN_ACC auto SumElemFaceNormal(Real_t *normalX0, Real_t *normalY0, Real_t *normalZ0,
                        Real_t *normalX1, Real_t *normalY1, Real_t *normalZ1,
                        Real_t *normalX2, Real_t *normalY2, Real_t *normalZ2,
                        Real_t *normalX3, Real_t *normalY3, Real_t *normalZ3,
@@ -398,7 +397,7 @@ ALPAKA_FN_ACC auto static inline SumElemFaceNormal(Real_t *normalX0, Real_t *nor
    *normalZ2 += areaZ;
    *normalZ3 += areaZ;
 }
-ALPAKA_FN_ACC static inline auto VoluDer(const Real_t x0, const Real_t x1, const Real_t x2,
+ALPAKA_FN_ACC auto VoluDer(const Real_t x0, const Real_t x1, const Real_t x2,
              const Real_t x3, const Real_t x4, const Real_t x5,
              const Real_t y0, const Real_t y1, const Real_t y2,
              const Real_t y3, const Real_t y4, const Real_t y5,
@@ -427,7 +426,7 @@ ALPAKA_FN_ACC static inline auto VoluDer(const Real_t x0, const Real_t x1, const
    *dvdy *= twelfth;
    *dvdz *= twelfth;
 }
-ALPAKA_FN_ACC static inline auto CalcElemFBHourglassForce(Real_t *xd, Real_t *yd, Real_t *zd,  Real_t *hourgam0,
+ALPAKA_FN_ACC auto CalcElemFBHourglassForce(Real_t *xd, Real_t *yd, Real_t *zd,  Real_t *hourgam0,
                               Real_t *hourgam1, Real_t *hourgam2, Real_t *hourgam3,
                               Real_t *hourgam4, Real_t *hourgam5, Real_t *hourgam6,
                               Real_t *hourgam7, Real_t coefficient,
@@ -608,8 +607,7 @@ ALPAKA_FN_ACC static inline auto CalcElemFBHourglassForce(Real_t *xd, Real_t *yd
       (hourgam7[i00] * h00 + hourgam7[i01] * h01 +
        hourgam7[i02] * h02 + hourgam7[i03] * h03);
 }
-ALPAKA_FN_ACC static inline
-auto CalcElemNodeNormals(Real_t pfx[8],
+ALPAKA_FN_ACC auto CalcElemNodeNormals(Real_t pfx[8],
                          Real_t pfy[8],
                          Real_t pfz[8],
                          const Real_t x[8],
@@ -664,7 +662,7 @@ auto CalcElemNodeNormals(Real_t pfx[8],
                   x[4], y[4], z[4], x[7], y[7], z[7],
                   x[6], y[6], z[6], x[5], y[5], z[5]);
 }
-ALPAKA_FN_ACC static auto inline CalcElemShapeFunctionDerivatives( const Real_t* const x,
+ALPAKA_FN_ACC auto CalcElemShapeFunctionDerivatives( const Real_t* const x,
                                        const Real_t* const y,
                                        const Real_t* const z,
                                        Real_t b[][8],
@@ -761,7 +759,7 @@ ALPAKA_FN_ACC static auto inline CalcElemShapeFunctionDerivatives( const Real_t*
   *volume = Real_t(8.) * ( fjxet * cjxet + fjyet * cjyet + fjzet * cjzet);
 }
 
-ALPAKA_FN_ACC void inline ApplyMaterialPropertiesForElems_device( // Dropped & of Real_t& eosvmin und eosvmax
+ALPAKA_FN_ACC void ApplyMaterialPropertiesForElems_device( // Dropped & of Real_t& eosvmin und eosvmax
     Real_t eosvmin, Real_t eosvmax,
     Real_t* vnew, Real_t *v,
     Real_t& vnewc, Index_t* bad_vol, Index_t zn)
@@ -794,7 +792,7 @@ ALPAKA_FN_ACC void inline ApplyMaterialPropertiesForElems_device( // Dropped & o
 
 }
 
-ALPAKA_FN_ACC auto inline UpdateVolumesForElems_device(Index_t numElem, Real_t v_cut, // Dropped the & from Real_t& v_cut
+ALPAKA_FN_ACC auto UpdateVolumesForElems_device(Index_t numElem, Real_t v_cut, // Dropped the & from Real_t& v_cut
                                   Real_t *vnew,
                                   Real_t *v,
                                   int i)
@@ -807,7 +805,7 @@ ALPAKA_FN_ACC auto inline UpdateVolumesForElems_device(Index_t numElem, Real_t v
    v[i] = tmpV ;
 }
 
-ALPAKA_FN_ACC auto inline CalcSoundSpeedForElems_device(Real_t& vnewc, Real_t rho0, Real_t &enewc, // Dropped the & from Real_t& rho0
+ALPAKA_FN_ACC auto CalcSoundSpeedForElems_device(Real_t& vnewc, Real_t rho0, Real_t &enewc, // Dropped the & from Real_t& rho0
                             Real_t &pnewc, Real_t &pbvc,
                             Real_t &bvc, Real_t ss4o3, Index_t nz,
                             Real_t *ss, Index_t iz)
@@ -823,7 +821,7 @@ ALPAKA_FN_ACC auto inline CalcSoundSpeedForElems_device(Real_t& vnewc, Real_t rh
   ss[iz] = ssTmp;
 }
 
-ALPAKA_FN_ACC auto inline CalcPressureForElems_device(
+ALPAKA_FN_ACC auto CalcPressureForElems_device(
                       Real_t& p_new, Real_t& bvc,
                       Real_t& pbvc, Real_t& e_old,
                       Real_t& compression, Real_t& vnewc,
@@ -852,7 +850,7 @@ ALPAKA_FN_ACC auto inline CalcPressureForElems_device(
 
 }
 
-ALPAKA_FN_ACC auto inline CalcEnergyForElems_device(Real_t& p_new, Real_t& e_new, Real_t& q_new,
+ALPAKA_FN_ACC auto CalcEnergyForElems_device(Real_t& p_new, Real_t& e_new, Real_t& q_new,
                             Real_t& bvc, Real_t& pbvc,
                             Real_t& p_old, Real_t& e_old, Real_t& q_old,
                             Real_t& compression, Real_t& compHalfStep,
@@ -962,7 +960,7 @@ ALPAKA_FN_ACC auto inline CalcEnergyForElems_device(Real_t& p_new, Real_t& e_new
 }
 
 
-ALPAKA_FN_ACC auto inline CalcHourglassModes(const Real_t xn[8], const Real_t yn[8], const Real_t zn[8],
+ALPAKA_FN_ACC auto CalcHourglassModes(const Real_t xn[8], const Real_t yn[8], const Real_t zn[8],
                         const Real_t dvdxn[8], const Real_t dvdyn[8], const Real_t dvdzn[8],
                         Real_t hourgam[8][4], Real_t volinv) -> void
 {
@@ -1058,7 +1056,7 @@ ALPAKA_FN_ACC auto CalcElemVolumeDerivative(Real_t dvdx[8],
            &dvdx[7], &dvdy[7], &dvdz[7]);
 }
 
-ALPAKA_FN_ACC auto inline giveMyRegion(const Index_t* regCSR,const Index_t i, const Index_t numReg)
+ALPAKA_FN_ACC auto giveMyRegion(const Index_t* regCSR,const Index_t i, const Index_t numReg)
 {
 
   for(Index_t reg = 0; reg < numReg-1; reg++)
@@ -1909,7 +1907,7 @@ class CalcAccelerationForNodes_kernel_class{
     template<typename TAcc>
     ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
     {
-        std::printf("[DEVICE] CalcAccelerationForNodes_kernel_class\n");
+        //std::printf("[DEVICE] CalcAccelerationForNodes_kernel_class\n");
         using Dim = alpaka::Dim<TAcc>;
         using Idx = alpaka::Idx<TAcc>;
         using Vec = alpaka::Vec<Dim, Idx>;
@@ -1918,7 +1916,6 @@ class CalcAccelerationForNodes_kernel_class{
         Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
         Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
         int tid=static_cast<int>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
-        std::printf("device\n");
         if (tid < numNode)
         {
             Real_t one_over_nMass = Real_t(1.)/nodalMass[tid];
@@ -2250,20 +2247,20 @@ class CalcKinematicsAndMonotonicQGradient_kernel_class{
     Index_t* __restrict__ bad_vol,
     const Index_t num_threads
     ):numElem(numElem),padded_numElem(padded_numElem),dt(dt),
-      nodelist(nodelist),volo(volo),v(v),x(x),y(y),z(z),xd(xd),yd(yd),zd(zd),vnew(vnew),delv(delv),arealg(arealg),dxx(dxx),dyy(dyy),vdov(vdov),delx_zeta(delx_zeta),
+      nodelist(nodelist),volo(volo),v(v),x(x),y(y),z(z),xd(xd),yd(yd),zd(zd),vnew(vnew),delv(delv),arealg(arealg),dxx(dxx),dyy(dyy),dzz(dzz),vdov(vdov),delx_zeta(delx_zeta),
       delv_zeta(delv_zeta),delx_xi(delx_xi),delv_xi(delv_xi),delx_eta(delx_eta),delv_eta(delv_eta),bad_vol(bad_vol),num_threads(num_threads){};
    template<typename TAcc>
    ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
     {
       Real_t B[3][8] ; /** shape function derivatives */
-   Index_t nodes[8] ;
-   Real_t x_local[8] ;
-   Real_t y_local[8] ;
-   Real_t z_local[8] ;
-   Real_t xd_local[8] ;
-   Real_t yd_local[8] ;
-   Real_t zd_local[8] ;
-   Real_t D[6];
+      Index_t nodes[8] ;
+      Real_t x_local[8] ;
+      Real_t y_local[8] ;
+      Real_t z_local[8] ;
+      Real_t xd_local[8] ;
+      Real_t yd_local[8] ;
+      Real_t zd_local[8] ;
+      Real_t D[6];
    using Dim = alpaka::Dim<TAcc>;
    using Idx = alpaka::Idx<TAcc>;
    using Vec = alpaka::Vec<Dim, Idx>;
@@ -2298,20 +2295,18 @@ class CalcKinematicsAndMonotonicQGradient_kernel_class{
       z_local[lnode] = z[nodes[lnode]];
 
 
-
     // volume calculations
     //printf("1,");
     volume = lulesh_port_kernels::CalcElemVolume(x_local[0], x_local[1], x_local[2], x_local[3], x_local[4], x_local[5], x_local[6], x_local[7], 
     y_local[0], y_local[1], y_local[2], y_local[3], y_local[4], y_local[5], y_local[6], y_local[7], 
     z_local[0], z_local[1], z_local[2], z_local[3], z_local[4], z_local[5], z_local[6], z_local[7]); 
-    printf("2,");
+
     relativeVolume = volume / volo[k] ; 
     vnew[k] = relativeVolume ;
 
     delv[k] = relativeVolume - v[k] ;
     // set characteristic length
     arealg[k] = lulesh_port_kernels::CalcElemCharacteristicLength(x_local,y_local,z_local,volume);
-
     // get nodal velocities from global array and copy into local arrays.
     //#pragma unroll
     for( Index_t lnode=0 ; lnode<8 ; ++lnode )
@@ -2345,14 +2340,16 @@ class CalcKinematicsAndMonotonicQGradient_kernel_class{
     // calc strain rate and apply as constraint (only done in FB element)
     Real_t vdovNew = D[0] + D[1] + D[2];
     Real_t vdovthird = vdovNew/Real_t(3.0) ;
-    
+
     // make the rate of deformation tensor deviatoric
     vdov[k] = vdovNew ;
-    dxx[k] = D[0] - vdovthird ;
-    dyy[k] = D[1] - vdovthird ;
-    dzz[k] = D[2] - vdovthird ; 
 
-    // ------------------------
+    dxx[k] = D[0] - vdovthird ;
+
+    dyy[k] = D[1] - vdovthird ;
+
+    dzz[k] = D[2] - vdovthird ; 
+   // ------------------------
     // CALC MONOTONIC Q GRADIENT
     // ------------------------
     Real_t vol = volo[k]*vnew[k];

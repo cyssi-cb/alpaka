@@ -2673,7 +2673,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       using Idx = std::size_t;
       using Vec2 =alpaka::Vec<Dim2, Idx>;
       std::cout<<"2665"<<std::endl;
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ElemForceKernel,Vec2{block_size,dimGrid},true);
+      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ElemForceKernel,Vec2{32,8},true);
       std::cout<<"2667"<<std::endl;
     #else
       if (hourg_gt_zero)
@@ -2940,7 +2940,7 @@ void ApplyAccelerationBoundaryConditionsForNodes(Domain *domain)
         using Idx = std::size_t;
         using Vec2 =alpaka::Vec<Dim2, Idx>;
         std::cout<<"2921"<<std::endl;
-        //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyAccBoundaryKernel,Vec2{dimBlock,dimGrid},false);
+        alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyAccBoundaryKernel,Vec2{dimBlock,dimGrid},false);
         
         #else
         // CUDA Code
@@ -3568,11 +3568,18 @@ void CalcKinematicsAndMonotonicQGradient(Domain *domain)
       using CalcKinematicsAndMonotonicQGradient = lulesh_port_kernels::CalcKinematicsAndMonotonicQGradient_kernel_class;
       cudaCheckError();
       CalcKinematicsAndMonotonicQGradient CalcKinematicsKernelObj(
-          numElem,padded_numElem, domain->deltatime_h, 
+          numElem,
+          padded_numElem, 
+          domain->deltatime_h,
           domain->nodelist.raw(),
           domain->volo.raw(),
           domain->v.raw(),
-          domain->x.raw(), domain->y.raw(), domain->z.raw(), domain->xd.raw(), domain->yd.raw(), domain->zd.raw(),
+          domain->x.raw(), 
+          domain->y.raw(), 
+          domain->z.raw(), 
+          domain->xd.raw(), 
+          domain->yd.raw(), 
+          domain->zd.raw(),
           domain->vnew->raw(),
           domain->delv.raw(),
           domain->arealg.raw(),
@@ -3590,12 +3597,12 @@ void CalcKinematicsAndMonotonicQGradient(Domain *domain)
           num_threads  
       );
       
-      using Dim2 = alpaka::DimInt<2>;
+      using Dim2 = alpaka::DimInt<2u>;
       using Idx = std::size_t;
       using Vec2 =alpaka::Vec<Dim2, Idx>;
       std::cout<<"3045"<<std::endl;
       cudaCheckError();
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcKinematicsKernelObj,Vec2{block_size,dimGrid},true);
+      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcKinematicsKernelObj,Vec2{1,1},true);
 
       std::cout<<"3598"<<std::endl;
             cudaCheckError();
@@ -3821,30 +3828,7 @@ void CalcMonotonicQRegionForElems(Domain *domain)
 
     Index_t dimBlock= 128;
     Index_t dimGrid = PAD_DIV(elength,dimBlock);
-    #ifdef ALPAKA
-    using CalcMonotonicQRegionForElems = lulesh_port_kernels::CalcMonotonicQRegionForElems_kernel_class;
-    CalcMonotonicQRegionForElems CalcMonotonicQRegionKernel(
-         qlc_monoq,qqc_monoq,monoq_limiter_mult,monoq_max_slope,ptiny,elength,
-         domain->regElemlist.raw(),domain->elemBC.raw(),
-         domain->lxim.raw(),domain->lxip.raw(),
-         domain->letam.raw(),domain->letap.raw(),
-         domain->lzetam.raw(),domain->lzetap.raw(),
-         domain->delv_xi->raw(),domain->delv_eta->raw(),domain->delv_zeta->raw(),
-         domain->delx_xi->raw(),domain->delx_eta->raw(),domain->delx_zeta->raw(),
-         domain->vdov.raw(),domain->elemMass.raw(),domain->volo.raw(),domain->vnew->raw(),
-         domain->qq.raw(),domain->ql.raw(), 
-         domain->q.raw(),
-         domain->qstop,
-         domain->bad_q_h
-      );
-      
-      using Dim2 = alpaka::DimInt<2u>;
-      using Idx = std::size_t;
-      using Vec2 =alpaka::Vec<Dim2, Idx>;
-      std::cout<<"3844"<<std::endl;
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcMonotonicQRegionKernel,Vec2{dimBlock,dimGrid},true);
-      std::cout<<"3846"<<std::endl;
-    #else
+
     CalcMonotonicQRegionForElems_kernel<<<dimGrid,dimBlock>>>
     ( qlc_monoq,qqc_monoq,monoq_limiter_mult,monoq_max_slope,ptiny,elength,
       domain->regElemlist.raw(),domain->elemBC.raw(),
@@ -3859,7 +3843,7 @@ void CalcMonotonicQRegionForElems(Domain *domain)
       domain->qstop,
       domain->bad_q_h
     );
-    #endif
+
     //cudaDeviceSynchronize();
     //cudaCheckError();
 }
@@ -4210,49 +4194,6 @@ void ApplyMaterialPropertiesAndUpdateVolume(Domain *domain)
 
     Index_t dimBlock = 128;
     Index_t dimGrid = PAD_DIV(length,dimBlock);
-    
-    #ifdef ALPAKA
-      using ApplyMaterialPropertiesAndUpdateVolume = lulesh_port_kernels::ApplyMaterialPropertiesAndUpdateVolume_kernel_class;
-      cudaCheckError();
-      ApplyMaterialPropertiesAndUpdateVolume ApplyMaterialPropertiesAndUpdateVolumeKernel(
-         length,
-         domain->refdens,
-         domain->e_cut,
-         domain->emin,
-         domain->ql.raw(),
-         domain->qq.raw(),
-         domain->vnew->raw(),
-         domain->v.raw(),
-         domain->pmin,
-         domain->p_cut,
-         domain->q_cut,
-         domain->eosvmin,
-         domain->eosvmax,
-         domain->regElemlist.raw(),
-         domain->e.raw(),
-         domain->delv.raw(),
-         domain->p.raw(),
-         domain->q.raw(),
-         domain->ss4o3,
-         domain->ss.raw(),
-         domain->v_cut,
-         domain->bad_vol_h,
-	 domain->cost,
-	 domain->regCSR.raw(),
-	 domain->regReps.raw(),
-	 domain->numReg 
-      );
-      
-      using Dim2 = alpaka::DimInt<2>;
-      using Idx = std::size_t;
-      using Vec2 =alpaka::Vec<Dim2, Idx>;
-      std::cout<<"4249"<<std::endl;
-      cudaCheckError();
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyMaterialPropertiesAndUpdateVolumeKernel,Vec2{dimBlock,dimGrid},true);
-
-      std::cout<<"4253"<<std::endl;
-            cudaCheckError();
-    #else
 
     ApplyMaterialPropertiesAndUpdateVolume_kernel<<<dimGrid,dimBlock>>>
         (length,
@@ -4282,7 +4223,7 @@ void ApplyMaterialPropertiesAndUpdateVolume(Domain *domain)
 	 domain->regReps.raw(),
 	 domain->numReg
          );
-     #endif
+
     //cudaDeviceSynchronize();
     //cudaCheckError();
   }
@@ -4562,52 +4503,11 @@ void CalcTimeConstraintsForElems(Domain* domain)
     const int max_dimGrid = 1024;
     const int dimBlock = 128;
     int dimGrid=std::min(max_dimGrid,PAD_DIV(length,dimBlock));
-    
+
+    cudaFuncSetCacheConfig(CalcTimeConstraintsForElems_kernel<dimBlock>, cudaFuncCachePreferShared);
+
     Vector_d<Real_t>* dev_mindtcourant= Allocator< Vector_d<Real_t> >::allocate(dimGrid);
     Vector_d<Real_t>* dev_mindthydro  = Allocator< Vector_d<Real_t> >::allocate(dimGrid);
-
-    #ifdef ALPAKA
-    using CalcTimeConstraintsForElems = lulesh_port_kernels::CalcTimeConstraintsForElems_kernel_class<dimBlock>;
-      cudaCheckError();
-      CalcTimeConstraintsForElems CalcTimeConstraintsKernel(
-         length,qqc2,dvovmax,
-         domain->matElemlist.raw(),domain->ss.raw(),domain->vdov.raw(),domain->arealg.raw(),
-         dev_mindtcourant->raw(),dev_mindthydro->raw() 
-      );
-      
-      using Dim2 = alpaka::DimInt<2>;
-      using Idx = std::size_t;
-      using Vec2 =alpaka::Vec<Dim2, Idx>;
-      std::cout<<"4581"<<std::endl;
-      cudaCheckError();
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcTimeConstraintsKernel,Vec2{dimBlock,dimGrid},true);
-
-      std::cout<<"4585"<<std::endl;
-      cudaCheckError();
-    
-    // TODO: CalcMinDtOneBlock
-    using CalcMinDtOneBlock = lulesh_port_kernels::CalcMinDtOneBlock_class<dimBlock>;
-      cudaCheckError();
-      CalcMinDtOneBlock CalcMinDtOneBlockKernel(
-         dev_mindthydro->raw(),
-         dev_mindtcourant->raw(),
-         domain->dtcourant_h,
-         domain->dthydro_h,
-         dimGrid
-      );
-      
-      using Dim2 = alpaka::DimInt<2>;
-      using Idx = std::size_t;
-      using Vec2 =alpaka::Vec<Dim2, Idx>;
-      std::cout<<"4600"<<std::endl;
-      cudaCheckError();
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcMinDtOneBlockKernel,Vec2{dimBlock,dimGrid},true);
-
-      std::cout<<"4604"<<std::endl;
-      cudaCheckError();
-    
-    #else
-    cudaFuncSetCacheConfig(CalcTimeConstraintsForElems_kernel<dimBlock>, cudaFuncCachePreferShared);
 
     CalcTimeConstraintsForElems_kernel<dimBlock> <<<dimGrid,dimBlock>>>
         (length,qqc2,dvovmax,
@@ -4616,10 +4516,8 @@ void CalcTimeConstraintsForElems(Domain* domain)
 
     // TODO: if dimGrid < 1024, should launch less threads
     CalcMinDtOneBlock<max_dimGrid> <<<2,max_dimGrid, max_dimGrid*sizeof(Real_t), domain->streams[1]>>>(dev_mindthydro->raw(),dev_mindtcourant->raw(),domain->dtcourant_h,domain->dthydro_h, dimGrid);
-    #endif
-    
-    cudaEventRecord(domain->time_constraint_computed,domain->streams[1]);
 
+    cudaEventRecord(domain->time_constraint_computed,domain->streams[1]);
     Allocator<Vector_d<Real_t> >::free(dev_mindtcourant,dimGrid);
     Allocator<Vector_d<Real_t> >::free(dev_mindthydro,dimGrid);
 }
