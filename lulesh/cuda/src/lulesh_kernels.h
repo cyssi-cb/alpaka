@@ -1442,7 +1442,7 @@ class CalcTimeConstraintsForElems_kernel_class{
         Real_t *arealg,
         Real_t *dev_mindtcourant,
         Real_t *dev_mindthydro
-    ):length(length),qqc2(qqc2),dvovmax(dvovmax),ss(ss),vdov(vdov),arealg(arealg),dev_mindtcourant(dev_mindtcourant),dev_mindthydro(dev_mindthydro)
+    ):length(length),qqc2(qqc2),dvovmax(dvovmax),matElemlist(matElemlist),ss(ss),vdov(vdov),arealg(arealg),dev_mindtcourant(dev_mindtcourant),dev_mindthydro(dev_mindthydro)
     {};
 
     template<typename TAcc>
@@ -1461,10 +1461,10 @@ class CalcTimeConstraintsForElems_kernel_class{
         
         //__shared__ volatile Real_t s_mindthydro[block_size];
         //__shared__ volatile Real_t s_mindtcourant[block_size];
-
+    printf("1\n");
     auto& s_mindthydro = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
     auto& s_mindtcourant = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
-
+      printf("2\n");
     Real_t mindthydro = Real_t(1.0e+20) ;
     Real_t mindtcourant = Real_t(1.0e+20) ;
 
