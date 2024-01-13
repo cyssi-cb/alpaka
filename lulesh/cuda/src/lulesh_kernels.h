@@ -1444,7 +1444,7 @@ class CalcTimeConstraintsForElems_kernel_class{
         Real_t *arealg,
         Real_t *dev_mindtcourant,
         Real_t *dev_mindthydro
-    ):length(length),qqc2(qqc2),dvovmax(dvovmax),ss(ss),vdov(vdov),arealg(arealg),dev_mindtcourant(dev_mindtcourant),dev_mindthydro(dev_mindthydro)
+    ):length(length),qqc2(qqc2),dvovmax(dvovmax),matElemlist(matElemlist),ss(ss),vdov(vdov),arealg(arealg),dev_mindtcourant(dev_mindtcourant),dev_mindthydro(dev_mindthydro)
     {};
 
     template<typename TAcc>
@@ -1463,10 +1463,10 @@ class CalcTimeConstraintsForElems_kernel_class{
         
         //__shared__ volatile Real_t s_mindthydro[block_size];
         //__shared__ volatile Real_t s_mindtcourant[block_size];
-
+    printf("1\n");
     auto& s_mindthydro = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
     auto& s_mindtcourant = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
-
+      printf("2\n");
     Real_t mindthydro = Real_t(1.0e+20) ;
     Real_t mindtcourant = Real_t(1.0e+20) ;
 
@@ -2250,7 +2250,7 @@ class CalcKinematicsAndMonotonicQGradient_kernel_class{
     Index_t* __restrict__ bad_vol,
     const Index_t num_threads
     ):numElem(numElem),padded_numElem(padded_numElem),dt(dt),
-      nodelist(nodelist),volo(volo),v(v),x(x),y(y),z(z),xd(xd),yd(yd),zd(zd),vnew(vnew),delv(delv),arealg(arealg),dxx(dxx),dyy(dyy),vdov(vdov),delx_zeta(delx_zeta),
+      nodelist(nodelist),volo(volo),v(v),x(x),y(y),z(z),xd(xd),yd(yd),zd(zd),vnew(vnew),delv(delv),arealg(arealg),dxx(dxx),dyy(dyy),dzz(dzz),vdov(vdov),delx_zeta(delx_zeta),
       delv_zeta(delv_zeta),delx_xi(delx_xi),delv_xi(delv_xi),delx_eta(delx_eta),delv_eta(delv_eta),bad_vol(bad_vol),num_threads(num_threads){};
    template<typename TAcc>
    ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void

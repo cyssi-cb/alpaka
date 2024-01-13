@@ -2673,7 +2673,8 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       using Idx = std::size_t;
       using Vec2 =alpaka::Vec<Dim2, Idx>;
       std::cout<<"2665"<<std::endl;
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ElemForceKernel,Vec2{block_size,dimGrid},true);
+      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ElemForceKernel,Vec2{16,8},true);
+      //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ElemForceKernel,Vec2{block_size,dimGrid},true);
       std::cout<<"2667"<<std::endl;
     #else
       if (hourg_gt_zero)
@@ -3595,7 +3596,8 @@ void CalcKinematicsAndMonotonicQGradient(Domain *domain)
       using Vec2 =alpaka::Vec<Dim2, Idx>;
       std::cout<<"3045"<<std::endl;
       cudaCheckError();
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcKinematicsKernelObj,Vec2{block_size,dimGrid},true);
+      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcKinematicsKernelObj,Vec2{16,8},true);
+      //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcKinematicsKernelObj,Vec2{block_size,dimGrid},true);
 
       std::cout<<"3598"<<std::endl;
             cudaCheckError();
@@ -4618,8 +4620,8 @@ void CalcTimeConstraintsForElems(Domain* domain)
     CalcMinDtOneBlock<max_dimGrid> <<<2,max_dimGrid, max_dimGrid*sizeof(Real_t), domain->streams[1]>>>(dev_mindthydro->raw(),dev_mindtcourant->raw(),domain->dtcourant_h,domain->dthydro_h, dimGrid);
     #endif
     
-    cudaEventRecord(domain->time_constraint_computed,domain->streams[1]);
-
+    //cudaEventRecord(domain->time_constraint_computed,domain->streams[1]);
+std::cout<<"4605"<<std::endl;
     Allocator<Vector_d<Real_t> >::free(dev_mindtcourant,dimGrid);
     Allocator<Vector_d<Real_t> >::free(dev_mindthydro,dimGrid);
 }
@@ -5096,7 +5098,6 @@ int main(int argc, char *argv[])
         its++;
         if (its == num_iters) break;
       }
-      #ifdef kernels
       // make sure GPU finished its work
       cudaDeviceSynchronize();
 
@@ -5131,7 +5132,6 @@ int main(int argc, char *argv[])
       #if USE_MPI
         MPI_Finalize() ;
       #endif
-  #endif
 
   return 0 ;
 }
