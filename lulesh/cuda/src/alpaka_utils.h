@@ -12,6 +12,7 @@ namespace alpaka_utils{
     template <typename Dim,typename Idx,typename kernel>
     static int alpakaExecuteBaseKernel(const kernel &obj,const alpaka::Vec<Dim, Idx> threadsPerGrid, const bool blocking){
         using Acc = alpaka::ExampleDefaultAcc<Dim, Idx>;
+        using Vec2_ = alpaka::Vec<alpaka::DimInt<2>, std::size_t>;
         cudaCheckError();
         std::cout << "Using alpaka accelerator: " << alpaka::getAccName<Acc>() << std::endl;
         if(blocking){
@@ -24,7 +25,6 @@ namespace alpaka_utils{
         std::cout<<"befdevAcc"<<std::endl;
         //static std::shared_ptr<alpaka::Dev<Acc>> ptr(devAcc(alpaka::getDevByIdx(alpaka::Platform<Acc>{},0)));
         std::cout<<"aftdevAcc"<<std::endl;
-        fflush(stdout);
         Queue_ queue(*devAcc);
         std::cout << "[DEBUG] Before elementsperthread" << std::endl;
         auto const elementsPerThread = alpaka::Vec<Dim, Idx>::all(static_cast<Idx>(1));
@@ -38,6 +38,7 @@ namespace alpaka_utils{
             false,
             alpaka::GridBlockExtentSubDivRestrictions::Unrestricted);
         std::cout << "[DEBUG] Before taskKernel" << std::endl;
+        //alpaka::trait::GetAccDevProps<alpaka::Dev<Acc>>(*devAcc);
         auto const taskKernel = alpaka::createTaskKernel<Acc>(
             workDiv,
             obj);

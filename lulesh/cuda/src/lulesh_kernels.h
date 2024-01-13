@@ -3,19 +3,62 @@
 #include <alpaka/alpaka.hpp>
 #define Real_t double
 #define Real_tp double*
+
+/* Stuff needed for boundary conditions */
+/* 2 BCs on each of 6 hexahedral faces (12 bits) */
+#define XI_M        0x00007
+#define XI_M_SYMM   0x00001
+#define XI_M_FREE   0x00002
+#define XI_M_COMM   0x00004
+
+#define XI_P        0x00038
+#define XI_P_SYMM   0x00008
+#define XI_P_FREE   0x00010
+#define XI_P_COMM   0x00020
+
+#define ETA_M       0x001c0
+#define ETA_M_SYMM  0x00040
+#define ETA_M_FREE  0x00080
+#define ETA_M_COMM  0x00100
+
+#define ETA_P       0x00e00
+#define ETA_P_SYMM  0x00200
+#define ETA_P_FREE  0x00400
+#define ETA_P_COMM  0x00800
+
+#define ZETA_M      0x07000
+#define ZETA_M_SYMM 0x01000
+#define ZETA_M_FREE 0x02000
+#define ZETA_M_COMM 0x04000
+
+#define ZETA_P      0x38000
+#define ZETA_P_SYMM 0x08000
+#define ZETA_P_FREE 0x10000
+#define ZETA_P_COMM 0x20000
+
+#define VOLUDER(a0,a1,a2,a3,a4,a5,b0,b1,b2,b3,b4,b5,dvdc)		\
+{									\
+  const Real_t twelfth = Real_t(1.0) / Real_t(12.0) ;			\
+									\
+   dvdc= 								\
+     ((a1) + (a2)) * ((b0) + (b1)) - ((a0) + (a1)) * ((b1) + (b2)) +	\
+     ((a0) + (a4)) * ((b3) + (b4)) - ((a3) + (a4)) * ((b0) + (b4)) -	\
+     ((a2) + (a5)) * ((b3) + (b5)) + ((a3) + (a5)) * ((b2) + (b5));	\
+   dvdc *= twelfth;							\
+}
 namespace lulesh_port_kernels{
 
 
 using Index_t= std::int32_t;
 using Int_t=std::int32_t;
 //this needs adjustment when using float
-inline Real_t  FMAX(Real_t  arg1,Real_t  arg2) { return fmax(arg1,arg2) ; }
-Real_t AreaFace( const Real_t x0, const Real_t x1,
+ALPAKA_FN_ACC inline auto FMAX(Real_t  arg1,Real_t  arg2)-> Real_t {return FMAX(arg1,arg2) ; }
+ALPAKA_FN_ACC auto AreaFace( const Real_t x0, const Real_t x1,
                  const Real_t x2, const Real_t x3,
                  const Real_t y0, const Real_t y1,
                  const Real_t y2, const Real_t y3,
                  const Real_t z0, const Real_t z1,
-                 const Real_t z2, const Real_t z3)
+                 const Real_t z2, const Real_t z3) -> Real_t
 {
    Real_t fx = (x2 - x0) - (x3 - x1);
    Real_t fy = (y2 - y0) - (y3 - y1);
@@ -31,12 +74,12 @@ Real_t AreaFace( const Real_t x0, const Real_t x1,
    return area ;
 }
 
-void CalcElemVelocityGradient( const Real_t* const xvel,
+ALPAKA_FN_ACC auto CalcElemVelocityGradient( const Real_t* const xvel,
                                 const Real_t* const yvel,
                                 const Real_t* const zvel,
                                 const Real_t b[][8],
                                 const Real_t detJ,
-                                Real_t* const d )
+                                Real_t* const d ) -> void
 {
   const Real_t inv_detJ = Real_t(1.0) / detJ ;
   Real_t dyddx, dxddy, dzddx, dxddz, dzddy, dyddz;
@@ -109,7 +152,7 @@ void CalcElemVelocityGradient( const Real_t* const xvel,
   d[4]  = Real_t( .5) * ( dxddz + dzddx );
   d[3]  = Real_t( .5) * ( dzddy + dyddz );
 }
-void CalcMonoGradient(Real_t *x, Real_t *y, Real_t *z,
+ALPAKA_FN_ACC auto CalcMonoGradient(Real_t *x, Real_t *y, Real_t *z,
                       Real_t *xv, Real_t *yv, Real_t *zv,
                       Real_t vol, 
                       Real_t *delx_zeta, 
@@ -117,7 +160,7 @@ void CalcMonoGradient(Real_t *x, Real_t *y, Real_t *z,
                       Real_t *delx_xi,
                       Real_t *delv_xi,
                       Real_t *delx_eta,
-                      Real_t *delv_eta)
+                      Real_t *delv_eta) -> void
 {
 
    #define SUM4(a,b,c,d) (a + b + c + d)
@@ -194,10 +237,10 @@ void CalcMonoGradient(Real_t *x, Real_t *y, Real_t *z,
 #undef SUM4
 }
 
-Real_t CalcElemCharacteristicLength( const Real_t x[8],
+ALPAKA_FN_ACC auto CalcElemCharacteristicLength( const Real_t x[8],
                                      const Real_t y[8],
                                      const Real_t z[8],
-                                     const Real_t volume)
+                                     const Real_t volume)-> Real_t
 {
    Real_t a, charLength = Real_t(0.0);
 
@@ -235,7 +278,7 @@ Real_t CalcElemCharacteristicLength( const Real_t x[8],
 
    return charLength;
 }
-__host__ __device__ Real_t CalcElemVolume( const Real_t x0, const Real_t x1,
+ALPAKA_FN_ACC auto CalcElemVolume( const Real_t x0, const Real_t x1,
                const Real_t x2, const Real_t x3,
                const Real_t x4, const Real_t x5,
                const Real_t x6, const Real_t x7,
@@ -246,7 +289,7 @@ __host__ __device__ Real_t CalcElemVolume( const Real_t x0, const Real_t x1,
                const Real_t z0, const Real_t z1,
                const Real_t z2, const Real_t z3,
                const Real_t z4, const Real_t z5,
-               const Real_t z6, const Real_t z7 )
+               const Real_t z6, const Real_t z7 ) -> Real_t
 {
    printf("h\n");
    Real_t twelveth = Real_t(1.0)/Real_t(12.0);
@@ -321,7 +364,7 @@ __host__ __device__ Real_t CalcElemVolume( const Real_t x0, const Real_t x1,
 
   return volume ;
 }
-auto static inline SumElemFaceNormal(Real_t *normalX0, Real_t *normalY0, Real_t *normalZ0,
+ALPAKA_FN_ACC auto static inline SumElemFaceNormal(Real_t *normalX0, Real_t *normalY0, Real_t *normalZ0,
                        Real_t *normalX1, Real_t *normalY1, Real_t *normalZ1,
                        Real_t *normalX2, Real_t *normalY2, Real_t *normalZ2,
                        Real_t *normalX3, Real_t *normalY3, Real_t *normalZ3,
@@ -355,7 +398,7 @@ auto static inline SumElemFaceNormal(Real_t *normalX0, Real_t *normalY0, Real_t 
    *normalZ2 += areaZ;
    *normalZ3 += areaZ;
 }
-static inline auto VoluDer(const Real_t x0, const Real_t x1, const Real_t x2,
+ALPAKA_FN_ACC static inline auto VoluDer(const Real_t x0, const Real_t x1, const Real_t x2,
              const Real_t x3, const Real_t x4, const Real_t x5,
              const Real_t y0, const Real_t y1, const Real_t y2,
              const Real_t y3, const Real_t y4, const Real_t y5,
@@ -384,7 +427,7 @@ static inline auto VoluDer(const Real_t x0, const Real_t x1, const Real_t x2,
    *dvdy *= twelfth;
    *dvdz *= twelfth;
 }
-static inline auto CalcElemFBHourglassForce(Real_t *xd, Real_t *yd, Real_t *zd,  Real_t *hourgam0,
+ALPAKA_FN_ACC static inline auto CalcElemFBHourglassForce(Real_t *xd, Real_t *yd, Real_t *zd,  Real_t *hourgam0,
                               Real_t *hourgam1, Real_t *hourgam2, Real_t *hourgam3,
                               Real_t *hourgam4, Real_t *hourgam5, Real_t *hourgam6,
                               Real_t *hourgam7, Real_t coefficient,
@@ -565,7 +608,7 @@ static inline auto CalcElemFBHourglassForce(Real_t *xd, Real_t *yd, Real_t *zd, 
       (hourgam7[i00] * h00 + hourgam7[i01] * h01 +
        hourgam7[i02] * h02 + hourgam7[i03] * h03);
 }
-static inline
+ALPAKA_FN_ACC static inline
 auto CalcElemNodeNormals(Real_t pfx[8],
                          Real_t pfy[8],
                          Real_t pfz[8],
@@ -621,7 +664,7 @@ auto CalcElemNodeNormals(Real_t pfx[8],
                   x[4], y[4], z[4], x[7], y[7], z[7],
                   x[6], y[6], z[6], x[5], y[5], z[5]);
 }
-static auto inline CalcElemShapeFunctionDerivatives( const Real_t* const x,
+ALPAKA_FN_ACC static auto inline CalcElemShapeFunctionDerivatives( const Real_t* const x,
                                        const Real_t* const y,
                                        const Real_t* const z,
                                        Real_t b[][8],
@@ -717,7 +760,209 @@ static auto inline CalcElemShapeFunctionDerivatives( const Real_t* const x,
   /* calculate jacobian determinant (volume) */
   *volume = Real_t(8.) * ( fjxet * cjxet + fjyet * cjyet + fjzet * cjzet);
 }
-auto inline CalcHourglassModes(const Real_t xn[8], const Real_t yn[8], const Real_t zn[8],
+
+ALPAKA_FN_ACC void inline ApplyMaterialPropertiesForElems_device( // Dropped & of Real_t& eosvmin und eosvmax
+    Real_t eosvmin, Real_t eosvmax,
+    Real_t* vnew, Real_t *v,
+    Real_t& vnewc, Index_t* bad_vol, Index_t zn)
+{
+  vnewc = vnew[zn] ;
+
+  if (eosvmin != Real_t(0.)) {
+      if (vnewc < eosvmin)
+          vnewc = eosvmin ;
+  }
+
+  if (eosvmax != Real_t(0.)) {
+      if (vnewc > eosvmax)
+          vnewc = eosvmax ;
+  }
+
+  // Now check for valid volume
+  Real_t vc = v[zn];
+  if (eosvmin != Real_t(0.)) {
+     if (vc < eosvmin)
+        vc = eosvmin ;
+  }
+  if (eosvmax != Real_t(0.)) {
+     if (vc > eosvmax)
+        vc = eosvmax ;
+  }
+  if (vc <= 0.) {
+     *bad_vol = zn;
+  }
+
+}
+
+ALPAKA_FN_ACC auto inline UpdateVolumesForElems_device(Index_t numElem, Real_t v_cut, // Dropped the & from Real_t& v_cut
+                                  Real_t *vnew,
+                                  Real_t *v,
+                                  int i)
+{
+   Real_t tmpV ;
+   tmpV = vnew[i] ;
+
+   if ( fabs(tmpV - Real_t(1.0)) < v_cut )
+      tmpV = Real_t(1.0) ;
+   v[i] = tmpV ;
+}
+
+ALPAKA_FN_ACC auto inline CalcSoundSpeedForElems_device(Real_t& vnewc, Real_t rho0, Real_t &enewc, // Dropped the & from Real_t& rho0
+                            Real_t &pnewc, Real_t &pbvc,
+                            Real_t &bvc, Real_t ss4o3, Index_t nz,
+                            Real_t *ss, Index_t iz)
+{
+  Real_t ssTmp = (pbvc * enewc + vnewc * vnewc *
+             bvc * pnewc) / rho0;
+  if (ssTmp <= Real_t(.1111111e-36)) {
+     ssTmp = Real_t(.3333333e-18);
+  }
+  else {
+    ssTmp = sqrt(ssTmp) ;
+  }
+  ss[iz] = ssTmp;
+}
+
+ALPAKA_FN_ACC auto inline CalcPressureForElems_device(
+                      Real_t& p_new, Real_t& bvc,
+                      Real_t& pbvc, Real_t& e_old,
+                      Real_t& compression, Real_t& vnewc,
+                      Real_t pmin,
+                      Real_t p_cut, Real_t eosvmax)
+{
+      
+      Real_t c1s = Real_t(2.0)/Real_t(3.0); 
+      Real_t p_temp = p_new;
+
+      bvc = c1s * (compression + Real_t(1.));
+      pbvc = c1s;
+
+      p_temp = bvc * e_old ;
+
+      if ( fabs(p_temp) <  p_cut )
+        p_temp = Real_t(0.0) ;
+
+      if ( vnewc >= eosvmax ) /* impossible condition here? */
+        p_temp = Real_t(0.0) ;
+
+      if (p_temp < pmin)
+        p_temp = pmin ;
+
+      p_new = p_temp;
+
+}
+
+ALPAKA_FN_ACC auto inline CalcEnergyForElems_device(Real_t& p_new, Real_t& e_new, Real_t& q_new,
+                            Real_t& bvc, Real_t& pbvc,
+                            Real_t& p_old, Real_t& e_old, Real_t& q_old,
+                            Real_t& compression, Real_t& compHalfStep,
+                            Real_t& vnewc, Real_t& work, Real_t& delvc, Real_t pmin,
+                            Real_t p_cut, Real_t e_cut, Real_t q_cut, Real_t emin,
+                            Real_t& qq, Real_t& ql,
+                            Real_t rho0, // Dropped & from Real_t& rho0 and eosvmax
+                            Real_t eosvmax,
+                            Index_t length)
+{
+   const Real_t sixth = Real_t(1.0) / Real_t(6.0) ;
+   Real_t pHalfStep;
+
+   e_new = e_old - Real_t(0.5) * delvc * (p_old + q_old)
+      + Real_t(0.5) * work;
+
+   if (e_new  < emin ) {
+      e_new = emin ;
+   }
+
+   CalcPressureForElems_device(pHalfStep, bvc, pbvc, e_new, compHalfStep, vnewc,
+                   pmin, p_cut, eosvmax);
+
+   Real_t vhalf = Real_t(1.) / (Real_t(1.) + compHalfStep) ;
+
+   if ( delvc > Real_t(0.) ) {
+      q_new = Real_t(0.) ;
+   }
+   else {
+      Real_t ssc = ( pbvc * e_new
+              + vhalf * vhalf * bvc * pHalfStep ) / rho0 ;
+
+      if ( ssc <= Real_t(.1111111e-36) ) {
+         ssc =Real_t(.3333333e-18) ;
+      } else {
+         ssc = sqrt(ssc) ;
+      }
+
+      q_new = (ssc*ql + qq) ;
+   }
+
+   e_new = e_new + Real_t(0.5) * delvc
+      * (  Real_t(3.0)*(p_old     + q_old)
+           - Real_t(4.0)*(pHalfStep + q_new)) ;
+
+   e_new += Real_t(0.5) * work;
+
+   if (fabs(e_new) < e_cut) {
+      e_new = Real_t(0.)  ;
+   }
+   if (     e_new  < emin ) {
+      e_new = emin ;
+   }
+
+   CalcPressureForElems_device(p_new, bvc, pbvc, e_new, compression, vnewc,
+                   pmin, p_cut, eosvmax);
+
+   Real_t q_tilde ;
+
+   if (delvc > Real_t(0.)) {
+      q_tilde = Real_t(0.) ;
+   }
+   else {
+      Real_t ssc = ( pbvc * e_new
+              + vnewc * vnewc * bvc * p_new ) / rho0 ;
+
+      if ( ssc <= Real_t(.1111111e-36) ) {
+         ssc = Real_t(.3333333e-18) ;
+      } else {
+         ssc = sqrt(ssc) ;
+      }
+
+      q_tilde = (ssc*ql + qq) ;
+   }
+
+   e_new = e_new - (  Real_t(7.0)*(p_old     + q_old)
+                            - Real_t(8.0)*(pHalfStep + q_new)
+                            + (p_new + q_tilde)) * delvc*sixth ;
+
+   if (fabs(e_new) < e_cut) {
+      e_new = Real_t(0.)  ;
+   }
+   if ( e_new  < emin ) {
+      e_new = emin ;
+   }
+
+   CalcPressureForElems_device(p_new, bvc, pbvc, e_new, compression, vnewc,
+                   pmin, p_cut, eosvmax);
+
+
+   if ( delvc <= Real_t(0.) ) {
+      Real_t ssc = ( pbvc * e_new
+              + vnewc * vnewc * bvc * p_new ) / rho0 ;
+
+      if ( ssc <= Real_t(.1111111e-36) ) {
+         ssc = Real_t(.3333333e-18) ;
+      } else {
+         ssc = sqrt(ssc) ;
+      }
+
+      q_new = (ssc*ql + qq) ;
+
+      if (fabs(q_new) < q_cut) q_new = Real_t(0.) ;
+   }
+
+   return ;
+}
+
+
+ALPAKA_FN_ACC auto inline CalcHourglassModes(const Real_t xn[8], const Real_t yn[8], const Real_t zn[8],
                         const Real_t dvdxn[8], const Real_t dvdyn[8], const Real_t dvdzn[8],
                         Real_t hourgam[8][4], Real_t volinv) -> void
 {
@@ -772,7 +1017,7 @@ auto inline CalcHourglassModes(const Real_t xn[8], const Real_t yn[8], const Rea
     hourgam[7][3] = -1.0 - volinv*(dvdxn[7]*hourmodx + dvdyn[7]*hourmody + dvdzn[7]*hourmodz);
 
 }
-auto CalcElemVolumeDerivative(Real_t dvdx[8],
+ALPAKA_FN_ACC auto CalcElemVolumeDerivative(Real_t dvdx[8],
                               Real_t dvdy[8],
                               Real_t dvdz[8],
                               const Real_t x[8],
@@ -812,6 +1057,703 @@ auto CalcElemVolumeDerivative(Real_t dvdx[8],
            z[6], z[5], z[4], z[3], z[2], z[0],
            &dvdx[7], &dvdy[7], &dvdz[7]);
 }
+
+ALPAKA_FN_ACC auto inline giveMyRegion(const Index_t* regCSR,const Index_t i, const Index_t numReg)
+{
+
+  for(Index_t reg = 0; reg < numReg-1; reg++)
+	if(i < regCSR[reg])
+		return reg;
+  return (numReg-1);
+}
+
+class CalcMonotonicQRegionForElems_kernel_class{
+
+    Real_t qlc_monoq;
+    Real_t qqc_monoq;
+    Real_t monoq_limiter_mult;
+    Real_t monoq_max_slope;
+    Real_t ptiny;
+    
+    // the elementset length
+    Index_t elength;
+  
+    Index_t* regElemlist;  
+//    const Index_t* __restrict__ regElemlist,
+    Index_t *elemBC;
+    Index_t *lxim;
+    Index_t *lxip;
+    Index_t *letam;
+    Index_t *letap;
+    Index_t *lzetam;
+    Index_t *lzetap;
+    Real_t *delv_xi;
+    Real_t *delv_eta;
+    Real_t *delv_zeta;
+    Real_t *delx_xi;
+    Real_t *delx_eta;
+    Real_t *delx_zeta;
+    Real_t *vdov;
+    Real_t *elemMass;
+    Real_t *volo;
+    Real_t *vnew;
+    Real_t *qq;
+    Real_t *ql;
+    Real_t *q;
+    Real_t qstop;
+    Index_t* bad_q;
+    
+    public:
+    
+    CalcMonotonicQRegionForElems_kernel_class(
+	    Real_t qlc_monoq,
+	    Real_t qqc_monoq,
+	    Real_t monoq_limiter_mult,
+	    Real_t monoq_max_slope,
+	    Real_t ptiny,
+	    
+	    // the elementset length
+	    Index_t elength,
+	  
+	    Index_t* regElemlist,  
+	//    const Index_t* __restrict__ regElemlist,
+	    Index_t *elemBC,
+	    Index_t *lxim,
+	    Index_t *lxip,
+	    Index_t *letam,
+	    Index_t *letap,
+	    Index_t *lzetam,
+	    Index_t *lzetap,
+	    Real_t *delv_xi,
+	    Real_t *delv_eta,
+	    Real_t *delv_zeta,
+	    Real_t *delx_xi,
+	    Real_t *delx_eta,
+	    Real_t *delx_zeta,
+	    Real_t *vdov,
+	    Real_t *elemMass,
+	    Real_t *volo,
+	    Real_t *vnew,
+	    Real_t *qq,
+	    Real_t *ql,
+	    Real_t *q,
+	    Real_t qstop,
+	    Index_t* bad_q
+    ){
+	    this->qlc_monoq=qlc_monoq;
+	    this->qqc_monoq=qqc_monoq;
+	    this->monoq_limiter_mult=monoq_limiter_mult;
+	    this->monoq_max_slope=monoq_max_slope;
+	    this->ptiny=ptiny;
+	    
+	    // the elementset length
+	    this->elength=elength;
+	  
+	    this->regElemlist=regElemlist;
+	    this->elemBC=elemBC;
+	    this->lxim=lxim;
+	    this->lxip=lxip;
+	    this->letam=letam;
+	    this->letap=letap;
+	    this->lzetam=lzetam;
+	    this->lzetap=lzetap;
+	    this->delv_xi=delv_xi;
+	    this->delv_eta=delv_eta;
+	    this->delv_zeta=delv_zeta;
+	    this->delx_xi=delx_xi;
+	    this->delx_eta=delx_eta;
+	    this->delx_zeta=delx_zeta;
+	    this->vdov=vdov;
+	    this->elemMass=elemMass;
+	    this->volo=volo;
+	    this->vnew=vnew;
+	    this->qq=qq;
+	    this->ql=ql,
+	    this->q=q;
+	    this->qstop=qstop;
+	    this->bad_q=bad_q;
+    };
+    template<typename TAcc>
+    ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
+    {
+        using Dim = alpaka::Dim<TAcc>;
+        using Idx = alpaka::Idx<TAcc>;
+        using Vec = alpaka::Vec<Dim, Idx>;
+        using Vec1 = alpaka::Vec<alpaka::DimInt<1u>, Idx>;
+        
+        Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+        Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+        Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
+        int ielem=static_cast<int>(linearizedGlobalThreadIdx[0u]);
+        
+            if (ielem<elength) {
+      Real_t qlin, qquad ;
+      Real_t phixi, phieta, phizeta ;
+      Index_t i = regElemlist[ielem];
+      Int_t bcMask = elemBC[i] ;
+      Real_t delvm, delvp ;
+
+      /*  phixi     */
+      Real_t norm = Real_t(1.) / ( delv_xi[i] + ptiny ) ;
+
+      switch (bcMask & XI_M) {
+	 case XI_M_COMM: /* needs comm data */
+         case 0:         delvm = delv_xi[lxim[i]] ; break ;
+         case XI_M_SYMM: delvm = delv_xi[i] ;            break ;
+         case XI_M_FREE: delvm = Real_t(0.0) ;                break ;
+         default:        /* ERROR */ ;                        break ;
+      }
+      switch (bcMask & XI_P) {
+	 case XI_P_COMM: /* needs comm data */
+         case 0:         delvp = delv_xi[lxip[i]] ; break ;
+         case XI_P_SYMM: delvp = delv_xi[i] ;            break ;
+         case XI_P_FREE: delvp = Real_t(0.0) ;                break ;
+         default:        /* ERROR */ ;                        break ;
+      }
+
+      delvm = delvm * norm ;
+      delvp = delvp * norm ;
+
+      phixi = Real_t(.5) * ( delvm + delvp ) ;
+
+      delvm *= monoq_limiter_mult ;
+      delvp *= monoq_limiter_mult ;
+
+      if ( delvm < phixi ) phixi = delvm ;
+      if ( delvp < phixi ) phixi = delvp ;
+      if ( phixi < Real_t(0.)) phixi = Real_t(0.) ;
+      if ( phixi > monoq_max_slope) phixi = monoq_max_slope;
+
+
+      /*  phieta     */
+      norm = Real_t(1.) / ( delv_eta[i] + ptiny ) ;
+
+      switch (bcMask & ETA_M) {
+	 case ETA_M_COMM: /* needs comm data */
+         case 0:          delvm = delv_eta[letam[i]] ; break ;
+         case ETA_M_SYMM: delvm = delv_eta[i] ;             break ;
+         case ETA_M_FREE: delvm = Real_t(0.0) ;                  break ;
+         default:         /* ERROR */ ;                          break ;
+      }
+      switch (bcMask & ETA_P) {
+	 case ETA_P_COMM: /* needs comm data */
+         case 0:          delvp = delv_eta[letap[i]] ; break ;
+         case ETA_P_SYMM: delvp = delv_eta[i] ;             break ;
+         case ETA_P_FREE: delvp = Real_t(0.0) ;                  break ;
+         default:         /* ERROR */ ;                          break ;
+      }
+
+      delvm = delvm * norm ;
+      delvp = delvp * norm ;
+
+      phieta = Real_t(.5) * ( delvm + delvp ) ;
+
+      delvm *= monoq_limiter_mult ;
+      delvp *= monoq_limiter_mult ;
+
+      if ( delvm  < phieta ) phieta = delvm ;
+      if ( delvp  < phieta ) phieta = delvp ;
+      if ( phieta < Real_t(0.)) phieta = Real_t(0.) ;
+      if ( phieta > monoq_max_slope)  phieta = monoq_max_slope;
+
+      /*  phizeta     */
+      norm = Real_t(1.) / ( delv_zeta[i] + ptiny ) ;
+
+      switch (bcMask & ZETA_M) {
+         case ZETA_M_COMM: /* needs comm data */
+         case 0:           delvm = delv_zeta[lzetam[i]] ; break ;
+         case ZETA_M_SYMM: delvm = delv_zeta[i] ;              break ;
+         case ZETA_M_FREE: delvm = Real_t(0.0) ;                    break ;
+         default:          /* ERROR */ ;                            break ;
+      }
+      switch (bcMask & ZETA_P) {
+         case ZETA_P_COMM: /* needs comm data */
+         case 0:           delvp = delv_zeta[lzetap[i]] ; break ;
+         case ZETA_P_SYMM: delvp = delv_zeta[i] ;              break ;
+         case ZETA_P_FREE: delvp = Real_t(0.0) ;                    break ;
+         default:          /* ERROR */ ;                            break ;
+      }
+
+      delvm = delvm * norm ;
+      delvp = delvp * norm ;
+
+      phizeta = Real_t(.5) * ( delvm + delvp ) ;
+
+      delvm *= monoq_limiter_mult ;
+      delvp *= monoq_limiter_mult ;
+
+      if ( delvm   < phizeta ) phizeta = delvm ;
+      if ( delvp   < phizeta ) phizeta = delvp ;
+      if ( phizeta < Real_t(0.)) phizeta = Real_t(0.);
+      if ( phizeta > monoq_max_slope  ) phizeta = monoq_max_slope;
+
+      /* Remove length scale */
+
+      if ( vdov[i] > Real_t(0.) ) {
+         qlin  = Real_t(0.) ;
+         qquad = Real_t(0.) ;
+     }
+      else {
+         Real_t delvxxi   = delv_xi[i]   * delx_xi[i]   ;
+         Real_t delvxeta  = delv_eta[i]  * delx_eta[i]  ;
+         Real_t delvxzeta = delv_zeta[i] * delx_zeta[i] ;
+
+         if ( delvxxi   > Real_t(0.) ) delvxxi   = Real_t(0.) ;
+         if ( delvxeta  > Real_t(0.) ) delvxeta  = Real_t(0.) ;
+         if ( delvxzeta > Real_t(0.) ) delvxzeta = Real_t(0.) ;
+
+         Real_t rho = elemMass[i] / (volo[i] * vnew[i]) ;
+
+         qlin = -qlc_monoq * rho *
+            (  delvxxi   * (Real_t(1.) - phixi) +
+               delvxeta  * (Real_t(1.) - phieta) +
+               delvxzeta * (Real_t(1.) - phizeta)  ) ;
+
+         qquad = qqc_monoq * rho *
+            (  delvxxi*delvxxi     * (Real_t(1.) - phixi*phixi) +
+               delvxeta*delvxeta   * (Real_t(1.) - phieta*phieta) +
+               delvxzeta*delvxzeta * (Real_t(1.) - phizeta*phizeta)  ) ;
+      }
+
+      qq[i] = qquad ;
+      ql[i] = qlin  ;
+
+      // Don't allow excessive artificial viscosity
+      if (q[i] > qstop)
+        *(bad_q) = i;
+
+   }
+   };
+
+};
+
+
+template<int block_size>
+class CalcMinDtOneBlock_class{
+
+    Real_t* dev_mindthydro;
+    Real_t* dev_mindtcourant;
+    Real_t* dtcourant;
+    Real_t* dthydro;
+    Index_t shared_array_size;
+    
+    public:
+    CalcMinDtOneBlock_class(
+        Real_t* dev_mindthydro, 
+        Real_t* dev_mindtcourant, 
+        Real_t* dtcourant, 
+        Real_t* dthydro, 
+        Index_t shared_array_size
+    ):dev_mindthydro(dev_mindthydro),dev_mindtcourant(dev_mindtcourant),dtcourant(dtcourant),dthydro(dthydro),shared_array_size(shared_array_size)
+    {};
+    
+    template<typename TAcc>
+    ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
+    {
+        using Dim = alpaka::Dim<TAcc>;
+        using Idx = alpaka::Idx<TAcc>;
+        using Vec = alpaka::Vec<Dim, Idx>;
+        using Vec1 = alpaka::Vec<alpaka::DimInt<1u>, Idx>;
+        
+        Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+        Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+        Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
+        Index_t i=static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+        Index_t tid = static_cast<Index_t>(globalThreadIdx[0u]);
+        Index_t blockIdx = static_cast<Index_t>(globalThreadExtent[0u]);
+        
+        //volatile __shared__ Real_t s_data[block_size];
+        auto& s_data = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
+
+  if (blockIdx==0)
+  {
+    if (tid < shared_array_size)
+      s_data[tid] = dev_mindtcourant[tid];
+    else
+      s_data[tid] = 1.0e20;
+
+    alpaka::syncBlockThreads(acc);
+
+    if (block_size >= 1024) { if (tid < 512) { s_data[tid] = min(s_data[tid],s_data[tid + 512]); } alpaka::syncBlockThreads(acc); }
+    if (block_size >=  512) { if (tid < 256) { s_data[tid] = min(s_data[tid],s_data[tid + 256]); } alpaka::syncBlockThreads(acc); }
+    if (block_size >=  256) { if (tid < 128) { s_data[tid] = min(s_data[tid],s_data[tid + 128]); } alpaka::syncBlockThreads(acc); }
+    if (block_size >=  128) { if (tid <  64) { s_data[tid] = min(s_data[tid],s_data[tid +  64]); } alpaka::syncBlockThreads(acc); }
+    if (tid <  32) { s_data[tid] = min(s_data[tid],s_data[tid +  32]); } 
+    if (tid <  16) { s_data[tid] = min(s_data[tid],s_data[tid +  16]); } 
+    if (tid <   8) { s_data[tid] = min(s_data[tid],s_data[tid +   8]); } 
+    if (tid <   4) { s_data[tid] = min(s_data[tid],s_data[tid +   4]); } 
+    if (tid <   2) { s_data[tid] = min(s_data[tid],s_data[tid +   2]); } 
+    if (tid <   1) { s_data[tid] = min(s_data[tid],s_data[tid +   1]); } 
+
+    if (tid<1)
+    {
+      *(dtcourant)= s_data[0];
+    }
+  }
+  else if (blockIdx==1)
+  {
+    if (tid < shared_array_size)
+      s_data[tid] = dev_mindthydro[tid];
+    else
+      s_data[tid] = 1.0e20;
+
+    alpaka::syncBlockThreads(acc);
+
+    if (block_size >= 1024) { if (tid < 512) { s_data[tid] = min(s_data[tid],s_data[tid + 512]); } alpaka::syncBlockThreads(acc); }
+    if (block_size >=  512) { if (tid < 256) { s_data[tid] = min(s_data[tid],s_data[tid + 256]); } alpaka::syncBlockThreads(acc); }
+    if (block_size >=  256) { if (tid < 128) { s_data[tid] = min(s_data[tid],s_data[tid + 128]); } alpaka::syncBlockThreads(acc); }
+    if (block_size >=  128) { if (tid <  64) { s_data[tid] = min(s_data[tid],s_data[tid +  64]); } alpaka::syncBlockThreads(acc); }
+    if (tid <  32) { s_data[tid] = min(s_data[tid],s_data[tid +  32]); } 
+    if (tid <  16) { s_data[tid] = min(s_data[tid],s_data[tid +  16]); } 
+    if (tid <   8) { s_data[tid] = min(s_data[tid],s_data[tid +   8]); } 
+    if (tid <   4) { s_data[tid] = min(s_data[tid],s_data[tid +   4]); } 
+    if (tid <   2) { s_data[tid] = min(s_data[tid],s_data[tid +   2]); } 
+    if (tid <   1) { s_data[tid] = min(s_data[tid],s_data[tid +   1]); } 
+
+    if (tid<1)
+    {
+      *(dthydro) = s_data[0];
+    }
+  }
+
+    };
+};
+
+template<int block_size>
+class CalcTimeConstraintsForElems_kernel_class{
+
+    Index_t length;
+    Real_t qqc2;
+    Real_t dvovmax;
+    Index_t *matElemlist;
+    Real_t *ss;
+    Real_t *vdov;
+    Real_t *arealg;
+    Real_t *dev_mindtcourant;
+    Real_t *dev_mindthydro;
+
+    
+    public:
+    CalcTimeConstraintsForElems_kernel_class(
+        Index_t length,
+        Real_t qqc2, 
+        Real_t dvovmax,
+        Index_t *matElemlist,
+        Real_t *ss,
+        Real_t *vdov,
+        Real_t *arealg,
+        Real_t *dev_mindtcourant,
+        Real_t *dev_mindthydro
+    ):length(length),qqc2(qqc2),dvovmax(dvovmax),matElemlist(matElemlist),ss(ss),vdov(vdov),arealg(arealg),dev_mindtcourant(dev_mindtcourant),dev_mindthydro(dev_mindthydro)
+    {};
+
+    template<typename TAcc>
+    ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
+    {
+        using Dim = alpaka::Dim<TAcc>;
+        using Idx = alpaka::Idx<TAcc>;
+        using Vec = alpaka::Vec<Dim, Idx>;
+        using Vec1 = alpaka::Vec<alpaka::DimInt<1u>, Idx>;
+        
+        Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+        Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+        Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
+        int i=static_cast<int>(linearizedGlobalThreadIdx[0u]);
+        int tid = static_cast<int>(globalThreadIdx[0u]);
+        
+        //__shared__ volatile Real_t s_mindthydro[block_size];
+        //__shared__ volatile Real_t s_mindtcourant[block_size];
+    printf("1\n");
+    auto& s_mindthydro = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
+    auto& s_mindtcourant = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
+      printf("2\n");
+    Real_t mindthydro = Real_t(1.0e+20) ;
+    Real_t mindtcourant = Real_t(1.0e+20) ;
+
+    Real_t dthydro = mindthydro;
+    Real_t dtcourant = mindtcourant;
+
+    while (i<length) {
+
+      Index_t indx = matElemlist[i] ;
+      Real_t vdov_tmp = vdov[indx];
+
+      // Computing dt_hydro
+      if (vdov_tmp != Real_t(0.)) {
+         Real_t dtdvov = dvovmax / (fabs(vdov_tmp)+Real_t(1.e-20)) ;
+         if ( dthydro > dtdvov ) {
+            dthydro = dtdvov ;
+         }
+      }
+      if (dthydro < mindthydro)
+        mindthydro = dthydro;
+
+      // Computing dt_courant
+      Real_t ss_tmp = ss[indx];
+      Real_t area_tmp = arealg[indx];
+      Real_t dtf = ss_tmp * ss_tmp ;
+    
+      dtf += ((vdov_tmp < 0.) ? qqc2*area_tmp*area_tmp*vdov_tmp*vdov_tmp : 0.);
+
+      dtf = area_tmp / sqrt(dtf) ;
+
+      /* determine minimum timestep with its corresponding elem */
+      if (vdov_tmp != Real_t(0.) && dtf < dtcourant) {
+        dtcourant = dtf ;
+      }
+
+      if (dtcourant< mindtcourant)
+        mindtcourant= dtcourant;
+
+      i += gridDim.x*blockDim.x;
+    }
+
+    s_mindthydro[tid]   = mindthydro;
+    s_mindtcourant[tid] = mindtcourant;
+
+    alpaka::syncBlockThreads(acc);
+
+    // Do shared memory reduction
+    if (block_size >= 1024) { 
+      if (tid < 512) { 
+        s_mindthydro[tid]   = min( s_mindthydro[tid]  , s_mindthydro[tid + 512]) ; 
+        s_mindtcourant[tid] = min( s_mindtcourant[tid], s_mindtcourant[tid + 512]) ; }
+      alpaka::syncBlockThreads(acc);  }
+
+    if (block_size >=  512) { 
+      if (tid < 256) { 
+        s_mindthydro[tid] = min( s_mindthydro[tid], s_mindthydro[tid + 256]) ; 
+        s_mindtcourant[tid] = min( s_mindtcourant[tid], s_mindtcourant[tid + 256]) ; } 
+      alpaka::syncBlockThreads(acc); }
+
+    if (block_size >=  256) { 
+      if (tid < 128) { 
+        s_mindthydro[tid] = min( s_mindthydro[tid], s_mindthydro[tid + 128]) ; 
+        s_mindtcourant[tid] = min( s_mindtcourant[tid], s_mindtcourant[tid + 128]) ; } 
+      alpaka::syncBlockThreads(acc); }
+
+    if (block_size >=  128) { 
+      if (tid <  64) { 
+        s_mindthydro[tid] = min( s_mindthydro[tid], s_mindthydro[tid +  64]) ; 
+        s_mindtcourant[tid] = min( s_mindtcourant[tid], s_mindtcourant[tid +  64]) ; } 
+      alpaka::syncBlockThreads(acc); }
+
+    if (tid <  32) { 
+      s_mindthydro[tid] = min( s_mindthydro[tid], s_mindthydro[tid +  32]) ; 
+      s_mindtcourant[tid] = min( s_mindtcourant[tid], s_mindtcourant[tid +  32]) ; 
+    } 
+
+    if (tid <  16) { 
+      s_mindthydro[tid] = min( s_mindthydro[tid], s_mindthydro[tid +  16]) ; 
+      s_mindtcourant[tid] = min( s_mindtcourant[tid], s_mindtcourant[tid +  16]) ;  
+    } 
+    if (tid <   8) { 
+      s_mindthydro[tid] = min( s_mindthydro[tid], s_mindthydro[tid +   8]) ; 
+      s_mindtcourant[tid] = min( s_mindtcourant[tid], s_mindtcourant[tid +   8]) ;  
+    } 
+    if (tid <   4) { 
+      s_mindthydro[tid] = min( s_mindthydro[tid], s_mindthydro[tid +   4]) ; 
+      s_mindtcourant[tid] = min( s_mindtcourant[tid], s_mindtcourant[tid +   4]) ;  
+    } 
+    if (tid <   2) { 
+      s_mindthydro[tid] = min( s_mindthydro[tid], s_mindthydro[tid +   2]) ; 
+      s_mindtcourant[tid] = min( s_mindtcourant[tid], s_mindtcourant[tid +   2]) ;  
+    } 
+    if (tid <   1) { 
+      s_mindthydro[tid] = min( s_mindthydro[tid], s_mindthydro[tid +   1]) ; 
+      s_mindtcourant[tid] = min( s_mindtcourant[tid], s_mindtcourant[tid +   1]) ;  
+    } 
+
+    // Store in global memory
+    if (tid==0) {
+      dev_mindtcourant[blockIdx.x] = s_mindtcourant[0];
+      dev_mindthydro[blockIdx.x] = s_mindthydro[0];
+    }
+    };
+};
+
+class ApplyMaterialPropertiesAndUpdateVolume_kernel_class{
+
+    Index_t length;
+    Real_t rho0;
+    Real_t e_cut;
+    Real_t emin;
+    Real_t* __restrict__ ql;
+    Real_t* __restrict__ qq;
+    Real_t* __restrict__ vnew;
+    Real_t* __restrict__ v;
+    Real_t pmin;
+    Real_t p_cut;
+    Real_t q_cut;
+    Real_t eosvmin;
+    Real_t eosvmax;
+    Index_t* __restrict__ regElemlist;
+//        const Index_t* __restrict__ regElemlist,
+    Real_t* __restrict__ e;
+    Real_t* __restrict__ delv;
+    Real_t* __restrict__ p;
+    Real_t* __restrict__ q;
+    Real_t ss4o3;
+    Real_t* __restrict__ ss;
+    Real_t v_cut;
+    Index_t* __restrict__ bad_vol;
+    const Int_t cost;
+    const Index_t* regCSR;
+    const Index_t* regReps;
+    const Index_t  numReg;
+    
+    public:
+    ApplyMaterialPropertiesAndUpdateVolume_kernel_class(
+        Index_t length,
+        Real_t rho0,
+        Real_t e_cut,
+        Real_t emin,
+        Real_t* __restrict__ ql,
+        Real_t* __restrict__ qq,
+        Real_t* __restrict__ vnew,
+        Real_t* __restrict__ v,
+        Real_t pmin,
+        Real_t p_cut,
+        Real_t q_cut,
+        Real_t eosvmin,
+        Real_t eosvmax,
+        Index_t* __restrict__ regElemlist,
+//        const Index_t* __restrict__ regElemlist,
+        Real_t* __restrict__ e,
+        Real_t* __restrict__ delv,
+        Real_t* __restrict__ p,
+        Real_t* __restrict__ q,
+        Real_t ss4o3,
+        Real_t* __restrict__ ss,
+        Real_t v_cut,
+        Index_t* __restrict__ bad_vol, 
+        const Int_t cost,
+        const Index_t* regCSR,
+        const Index_t* regReps,
+	const Index_t  numReg
+    
+    ):numReg(numReg),cost(cost),eosvmin(eosvmin){
+    	this->length=length;
+        this->rho0=rho0;
+        this->e_cut=e_cut;
+        this->emin=emin;
+        this->ql=ql;
+        this->qq=qq;
+        this->vnew=vnew;
+        this->v=v;
+        this->pmin=pmin;
+        this->p_cut=p_cut;
+        this->q_cut=q_cut;
+        //this->eosvmin=eosvmin;
+        this->eosvmax=eosvmax;
+        this->regElemlist=regElemlist;
+//        const Index_t* __restrict__ regElemlist,
+        this->e=e;
+        this->delv=delv,
+        this->p=p;
+        this->q=q;
+        this->ss4o3=ss4o3;
+        this->ss=ss;
+        this->v_cut=v_cut;
+        this->bad_vol=bad_vol;
+        //this->cost=cost;
+        this->regCSR=regCSR;
+        this->regReps=regReps;
+	//this->numReg=numReg;
+    
+    };
+    
+    template<typename TAcc>
+    ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
+    {
+        using Dim = alpaka::Dim<TAcc>;
+        using Idx = alpaka::Idx<TAcc>;
+        using Vec = alpaka::Vec<Dim, Idx>;
+        using Vec1 = alpaka::Vec<alpaka::DimInt<1u>, Idx>;
+        
+        Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+        Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+        Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
+        int i=static_cast<int>(linearizedGlobalThreadIdx[0u]);
+        
+        Real_t e_old, delvc, p_old, q_old, e_temp, delvc_temp, p_temp, q_temp;
+        Real_t compression, compHalfStep;
+        Real_t qq_old, ql_old, qq_temp, ql_temp, work;
+        Real_t p_new, e_new, q_new;
+        Real_t bvc, pbvc, vnewc;
+        
+        if (i<length) {
+
+    Index_t zidx  = regElemlist[i] ;
+
+    lulesh_port_kernels::ApplyMaterialPropertiesForElems_device(eosvmin,eosvmax,vnew,v,vnewc,bad_vol,zidx);
+/********************** Start EvalEOSForElems   **************************/
+// Here we need to find out what region this element belongs to and what is the rep value!
+  Index_t region = lulesh_port_kernels::giveMyRegion(regCSR,i,numReg);  
+  Index_t rep = regReps[region];
+    
+    e_temp = e[zidx];
+    p_temp = p[zidx];
+    q_temp = q[zidx];
+    qq_temp = qq[zidx] ;
+    ql_temp = ql[zidx] ;
+    delvc_temp = delv[zidx];
+
+  for(int r=0; r < rep; r++)
+  {
+
+    e_old = e_temp;
+    p_old = p_temp;
+    q_old = q_temp;
+    qq_old = qq_temp;
+    ql_old = ql_temp;
+    delvc = delvc_temp;
+    work = Real_t(0.);
+
+    Real_t vchalf ;
+    compression = Real_t(1.) / vnewc - Real_t(1.);
+    vchalf = vnewc - delvc * Real_t(.5);
+    compHalfStep = Real_t(1.) / vchalf - Real_t(1.);
+
+    if ( eosvmin != Real_t(0.) ) {
+        if (vnewc <= eosvmin) { /* impossible due to calling func? */
+            compHalfStep = compression ;
+        }
+    }
+    if ( eosvmax != Real_t(0.) ) {
+        if (vnewc >= eosvmax) { /* impossible due to calling func? */
+            p_old        = Real_t(0.) ;
+            compression  = Real_t(0.) ;
+            compHalfStep = Real_t(0.) ;
+        }
+    }
+
+//    qq_old = qq[zidx] ;
+//    ql_old = ql[zidx] ;
+//    work = Real_t(0.) ;
+
+    lulesh_port_kernels::CalcEnergyForElems_device(p_new, e_new, q_new, bvc, pbvc,
+                 p_old, e_old,  q_old, compression, compHalfStep,
+                 vnewc, work,  delvc, pmin,
+                 p_cut, e_cut, q_cut, emin,
+                 qq_old, ql_old, rho0, eosvmax, length);
+ }//end for rep
+
+    p[zidx] = p_new ;
+    e[zidx] = e_new ;
+    q[zidx] = q_new ;
+
+    lulesh_port_kernels::CalcSoundSpeedForElems_device
+       (vnewc,rho0,e_new,p_new,pbvc,bvc,ss4o3,length,ss,zidx);
+
+/********************** End EvalEOSForElems     **************************/
+
+    lulesh_port_kernels::UpdateVolumesForElems_device(length,v_cut,vnew,v,zidx);
+
+  }
+  };
+
+};
 
 class CalcPositionAndVelocityForNodes_kernel_class{
 
@@ -1308,7 +2250,7 @@ class CalcKinematicsAndMonotonicQGradient_kernel_class{
     Index_t* __restrict__ bad_vol,
     const Index_t num_threads
     ):numElem(numElem),padded_numElem(padded_numElem),dt(dt),
-      nodelist(nodelist),volo(volo),v(v),x(x),y(y),z(z),xd(xd),yd(yd),zd(zd),vnew(vnew),delv(delv),arealg(arealg),dxx(dxx),dyy(dyy),vdov(vdov),delx_zeta(delx_zeta),
+      nodelist(nodelist),volo(volo),v(v),x(x),y(y),z(z),xd(xd),yd(yd),zd(zd),vnew(vnew),delv(delv),arealg(arealg),dxx(dxx),dyy(dyy),dzz(dzz),vdov(vdov),delx_zeta(delx_zeta),
       delv_zeta(delv_zeta),delx_xi(delx_xi),delv_xi(delv_xi),delx_eta(delx_eta),delv_eta(delv_eta),bad_vol(bad_vol),num_threads(num_threads){};
    template<typename TAcc>
    ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
