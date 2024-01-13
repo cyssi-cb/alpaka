@@ -2673,12 +2673,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       using Idx = std::size_t;
       using Vec2 =alpaka::Vec<Dim2, Idx>;
       std::cout<<"2665"<<std::endl;
-<<<<<<< HEAD
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ElemForceKernel,Vec2{32,8},true);
-=======
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ElemForceKernel,Vec2{16,8},true);
-      //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ElemForceKernel,Vec2{block_size,dimGrid},true);
->>>>>>> develop
+      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ElemForceKernel,Vec2{block_size,dimGrid},true);
       std::cout<<"2667"<<std::endl;
     #else
       if (hourg_gt_zero)
@@ -3607,12 +3602,7 @@ void CalcKinematicsAndMonotonicQGradient(Domain *domain)
       using Vec2 =alpaka::Vec<Dim2, Idx>;
       std::cout<<"3045"<<std::endl;
       cudaCheckError();
-<<<<<<< HEAD
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcKinematicsKernelObj,Vec2{1,1},true);
-=======
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcKinematicsKernelObj,Vec2{16,8},true);
-      //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcKinematicsKernelObj,Vec2{block_size,dimGrid},true);
->>>>>>> develop
+      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcKinematicsKernelObj,Vec2{block_size,dimGrid},true);
 
       std::cout<<"3598"<<std::endl;
             cudaCheckError();
@@ -4518,23 +4508,18 @@ void CalcTimeConstraintsForElems(Domain* domain)
 
     Vector_d<Real_t>* dev_mindtcourant= Allocator< Vector_d<Real_t> >::allocate(dimGrid);
     Vector_d<Real_t>* dev_mindthydro  = Allocator< Vector_d<Real_t> >::allocate(dimGrid);
-
+    #ifdef ALPAKA
     CalcTimeConstraintsForElems_kernel<dimBlock> <<<dimGrid,dimBlock>>>
         (length,qqc2,dvovmax,
          domain->matElemlist.raw(),domain->ss.raw(),domain->vdov.raw(),domain->arealg.raw(),
          dev_mindtcourant->raw(),dev_mindthydro->raw());
-
+    #else
     // TODO: if dimGrid < 1024, should launch less threads
     CalcMinDtOneBlock<max_dimGrid> <<<2,max_dimGrid, max_dimGrid*sizeof(Real_t), domain->streams[1]>>>(dev_mindthydro->raw(),dev_mindtcourant->raw(),domain->dtcourant_h,domain->dthydro_h, dimGrid);
-<<<<<<< HEAD
-
-    cudaEventRecord(domain->time_constraint_computed,domain->streams[1]);
-=======
     #endif
     
     //cudaEventRecord(domain->time_constraint_computed,domain->streams[1]);
-std::cout<<"4605"<<std::endl;
->>>>>>> develop
+
     Allocator<Vector_d<Real_t> >::free(dev_mindtcourant,dimGrid);
     Allocator<Vector_d<Real_t> >::free(dev_mindthydro,dimGrid);
 }
@@ -4973,7 +4958,7 @@ int main(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);
   #endif
 
-    cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+    //cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
     // timestep to solution 
     int its=0;
@@ -5011,8 +4996,7 @@ int main(int argc, char *argv[])
         its++;
         if (its == num_iters) break;
       }
-      // make sure GPU finished its work
-      cudaDeviceSynchronize();
+      //cudaDeviceSynchronize();
 
       // Use reduced max elapsed time
         double elapsed_time;
@@ -5040,7 +5024,7 @@ int main(int argc, char *argv[])
       #ifdef SAMI
       DumpDomain(locDom) ;
       #endif
-      cudaDeviceReset();
+      //cudaDeviceReset();
 
       #if USE_MPI
         MPI_Finalize() ;
