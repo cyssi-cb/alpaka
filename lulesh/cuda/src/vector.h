@@ -39,7 +39,7 @@ class Vector_h{
   using DevHost = alpaka::DevCpu;
 
   using Vec= alpaka::Vec<Dim1,Idx>;
-  using Buffer = alpaka::Buf<DevHost, T, Dim1, Idx>;
+  using Buffer = alpaka::Buf<alpaka::DevCpu, T, Dim1, Idx>;
   std::shared_ptr<Buffer> bufHost;
   T * pHost;
   Vec extent1D;
@@ -180,10 +180,9 @@ class Vector_d{
     }
 
     template<typename TIDX>
-    T &operator[](TIDX index){
-      Vector_h<T> hostvec(*this);
-      return hostvec.raw()[index];
-
+    T operator[](TIDX index){
+      Vector_h host(*this);
+      return host[index];
     }
     Buffer& getBuf(){
       return *bufAcc;

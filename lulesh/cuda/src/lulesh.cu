@@ -274,47 +274,6 @@ return CalcElemVolume( x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7],
                        z[0], z[1], z[2], z[3], z[4], z[5], z[6], z[7]);
 }
 
-void cuda_init(int rank)
-{
-    Int_t deviceCount, dev;
-    cudaDeviceProp cuda_deviceProp;
-    
-    cudaSafeCall( cudaGetDeviceCount(&deviceCount) );
-    if (deviceCount == 0) {
-        fprintf(stderr, "cuda_init(): no devices supporting CUDA.\n");
-        exit(1);
-    }
-
-    dev = rank % deviceCount;
-
-    if ((dev < 0) || (dev > deviceCount-1)) {
-        fprintf(stderr, "cuda_init(): requested device (%d) out of range [%d,%d]\n",
-                dev, 0, deviceCount-1);
-        exit(1);
-    }
-
-    cudaSafeCall( cudaSetDevice(dev) );
-
-    struct cudaDeviceProp props;
-    cudaGetDeviceProperties(&props, dev);
-
-    char hostname[256];
-    gethostname(hostname, sizeof(hostname));
-
-    printf("Host %s using GPU %i: %s\n", hostname, dev, props.name);
-
-    cudaSafeCall( cudaGetDeviceProperties(&cuda_deviceProp, dev) );
-    if (cuda_deviceProp.major < 3) {
-        fprintf(stderr, "cuda_init(): This implementation of Lulesh requires device SM 3.0+.\n", dev);
-        exit(1);
-    }
-
-#if CUDART_VERSION < 5000
-   fprintf(stderr,"cuda_init(): This implementation of Lulesh uses texture objects, which is requires Cuda 5.0+.\n");
-   exit(1);
-#endif
-
-}
 
 void AllocateNodalPersistent(Domain* domain, size_t domNodes)
 {
@@ -723,7 +682,7 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
     cudaStreamCreate(&(domain->streams[i]));
   #endif
   //TODO get Rid of cuda Event (use some Alpaka function instead)
-  cudaEventCreateWithFlags(&domain->time_constraint_computed,cudaEventDisableTiming);
+  //cudaEventCreateWithFlags(&domain->time_constraint_computed,cudaEventDisableTiming);
 
 
   Index_t domElems;
@@ -1013,10 +972,11 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
     domain->elemBC = elemBC_h;
 
     /* deposit energy */
-    domain->e[domain->octantCorner] = Real_t(3.948746e+7) ;
+    Real_t arg[] = {3.948746e+7};
+    domain->e.changeValue(domain->octantCorner,1,&arg[0]);
 
   }
-
+  std::cout<<"hallo"<<std::endl;
   /* set up node-centered indexing of elements */
   Vector_h<Index_t> nodeElemCount_h(domNodes);
 
@@ -1077,17 +1037,18 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
      matElemlist_h[i] = i ;
   }
   domain->matElemlist = matElemlist_h;
-  std::cout<<"before cuda Malloc"<<std::endl;
-  cudaMallocHost(&domain->dtcourant_h,sizeof(Real_t),0);
+  Vector_h<Real_t> dtcourant(1,1e20);
+  Vector_h<Real_t> dthydro(1,1e20);
+  Vector_h<Index_t> bad_vol(1,-1);
+  Vector_h<Index_t> bad_q(1,-1);
+  domain->dtcourant_d=dtcourant;
+  domain->dthydro_d=dthydro;
+  domain->bad_vol_d=bad_vol;
+  domain->bad_q_d=bad_q;
+  /* cudaMallocHost(&domain->dtcourant_h,sizeof(Real_t),0);
   cudaMallocHost(&domain->dthydro_h,sizeof(Real_t),0);
-  cudaMallocHost(&domain->bad_vol_h,sizeof(Index_t),0);
-  cudaMallocHost(&domain->bad_q_h,sizeof(Index_t),0);
-  std::cout<<"aft cuda Malloc"<<std::endl;
-  *(domain->bad_vol_h)=-1;
-  *(domain->bad_q_h)=-1;
-  *(domain->dthydro_h)=1e20;
-  *(domain->dtcourant_h)=1e20;
-
+  cudaMallocHost(&domain->bad_vol_h,sizeof(Index_t),0);//check
+  cudaMallocHost(&domain->bad_q_h,sizeof(Index_t),0);//check*/
   /* initialize material parameters */
   domain->time_h      = Real_t(0.) ;
   domain->dtfixed = Real_t(-1.0e-6) ;
@@ -1375,11 +1336,6 @@ void TimeIncrement(Domain* domain)
 {
 
     // To make sure dtcourant and dthydro have been updated on host
-    cudaCheckError();
-    std::cout<<"1378"<<std::endl;
-    cudaEventSynchronize(domain->time_constraint_computed);
-    cudaCheckError();
-    std::cout<<"1380"<<std::endl;
     Real_t targetdt = domain->stoptime - domain->time_h;
 
     if ((domain->dtfixed <= Real_t(0.0)) && (domain->cycle != Int_t(0))) {
@@ -1389,11 +1345,11 @@ void TimeIncrement(Domain* domain)
       /* This will require a reduction in parallel */
       Real_t gnewdt = Real_t(1.0e+20) ;
       Real_t newdt;
-      if ( *(domain->dtcourant_h) < gnewdt) { 
-         gnewdt = *(domain->dtcourant_h) / Real_t(2.0) ;
+      if ( domain->dtcourant_d[0] < gnewdt) { 
+         gnewdt = domain->dtcourant_d[0] / Real_t(2.0) ;
       }
-      if ( *(domain->dthydro_h) < gnewdt) { 
-         gnewdt = *(domain->dthydro_h) * Real_t(2.0) / Real_t(3.0) ;
+      if ( domain->dthydro_d[0] < gnewdt) { 
+         gnewdt = domain->dthydro_d[0] * Real_t(2.0) / Real_t(3.0) ;
       }
 
 #if USE_MPI      
@@ -2665,7 +2621,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
         fx_elem.raw(), 
         fy_elem.raw(), 
         fz_elem.raw() ,
-        domain->bad_vol_h,
+        domain->bad_vol_d.raw(),
         num_threads,
         hourg_gt_zero
       );
@@ -2804,15 +2760,15 @@ static inline void CalcVolumeForceForElems(Domain* domain)
 
 static inline void checkErrors(Domain* domain,int its,int myRank)
 {
-  if (*(domain->bad_vol_h) != -1)
+  if (domain->bad_q_d[0] != -1)
   {
-    printf("Rank %i: Volume Error in cell %d at iteration %d\n",myRank,*(domain->bad_vol_h),its);
+    printf("Rank %i: Volume Error in cell %d at iteration %d\n",myRank,domain->bad_vol_d[0],its);
     exit(VolumeError);
   }
 
-  if (*(domain->bad_q_h) != -1)
+  if (domain->bad_q_d[0] != -1)
   {
-    printf("Rank %i: Q Error in cell %d at iteration %d\n",myRank,*(domain->bad_q_h),its);
+    printf("Rank %i: Q Error in cell %d at iteration %d\n",myRank,domain->bad_q_d[0],its);
     exit(QStopError);
   }
 }
@@ -2893,7 +2849,6 @@ void CalcAccelerationForNodes(Domain *domain)
     std::cout<<"2873"<<std::endl;
     alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcAccNodeKernel,Vec2{dimBlock,dimGrid},true);
     std::cout<<"2875"<<std::endl;
-    cudaDeviceSynchronize();
     cudaCheckError();
     #else
     CalcAccelerationForNodes_kernel<<<dimGrid, dimBlock>>>
@@ -3587,7 +3542,7 @@ void CalcKinematicsAndMonotonicQGradient(Domain *domain)
           domain->delv_xi->raw(),  
           domain->delx_eta->raw(), 
           domain->delv_eta->raw(),
-          domain->bad_vol_h,
+          domain->bad_vol_d.raw(),
           num_threads  
       );
       
@@ -3837,7 +3792,7 @@ void CalcMonotonicQRegionForElems(Domain *domain)
          domain->qq.raw(),domain->ql.raw(), 
          domain->q.raw(),
          domain->qstop,
-         domain->bad_q_h
+         domain->bad_q_d.raw()
       );
       
       using Dim2 = alpaka::DimInt<2u>;
@@ -4238,7 +4193,7 @@ void ApplyMaterialPropertiesAndUpdateVolume(Domain *domain)
          domain->ss4o3,
          domain->ss.raw(),
          domain->v_cut,
-         domain->bad_vol_h,
+         domain->bad_vol_d.raw(),
 	 domain->cost,
 	 domain->regCSR.raw(),
 	 domain->regReps.raw(),
@@ -4251,7 +4206,6 @@ void ApplyMaterialPropertiesAndUpdateVolume(Domain *domain)
       std::cout<<"4249"<<std::endl;
       cudaCheckError();
       alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyMaterialPropertiesAndUpdateVolumeKernel,Vec2{dimBlock,dimGrid},true);
-
       std::cout<<"4253"<<std::endl;
             cudaCheckError();
     #else
@@ -4593,8 +4547,8 @@ void CalcTimeConstraintsForElems(Domain* domain)
       CalcMinDtOneBlock CalcMinDtOneBlockKernel(
          dev_mindthydro->raw(),
          dev_mindtcourant->raw(),
-         domain->dtcourant_h,
-         domain->dthydro_h,
+         domain->dtcourant_d.raw(),
+         domain->dthydro_d.raw(),
          dimGrid
       );
       
@@ -4887,11 +4841,14 @@ void VerifyAndWriteFinalOutput(Real_t elapsed_time,
       grindTime2 = ((elapsed_time*1e6)/its)/(locDom.numElem*numRanks);
    }
    // Copy Energy back to Host 
+   std::cout<<structured<<std::endl;
    if(structured)
    {
       Real_t e_zero;
-      Real_t* d_ezero_ptr = locDom.e.raw() + locDom.octantCorner; /* octant corner supposed to be 0 */
-      cudaMemcpy(&e_zero, d_ezero_ptr, sizeof(Real_t), cudaMemcpyDeviceToHost);
+      //Real_t* d_ezero_ptr = locDom.e.raw() + locDom.octantCorner; /* octant corner supposed to be 0 */
+      Vector_h e_all(locDom.e); 
+      e_zero=e_all[locDom.octantCorner];
+      //cudaMemcpy(&e_zero, d_ezero_ptr, sizeof(Real_t), cudaMemcpyDeviceToHost);
 
       printf("Run completed:  \n");
       printf("   Problem size        =  %i \n",    nx);
@@ -4902,9 +4859,6 @@ void VerifyAndWriteFinalOutput(Real_t elapsed_time,
       Real_t   MaxAbsDiff = Real_t(0.0);
       Real_t TotalAbsDiff = Real_t(0.0);
       Real_t   MaxRelDiff = Real_t(0.0);
-
-      Real_t *e_all = new Real_t[nx * nx];
-      cudaMemcpy(e_all, locDom.e.raw(), nx * nx * sizeof(Real_t), cudaMemcpyDeviceToHost);
       for (Index_t j=0; j<nx; ++j) {
          for (Index_t k=j+1; k<nx; ++k) {
             Real_t AbsDiff = FABS(e_all[j*nx+k]-e_all[k*nx+j]);
@@ -4917,7 +4871,6 @@ void VerifyAndWriteFinalOutput(Real_t elapsed_time,
             if (MaxRelDiff <RelDiff)  MaxRelDiff = RelDiff;
          }
       }
-      delete e_all;
 
       // Quick symmetry check
       printf("   Testing Plane 0 of Energy Array on rank 0:\n");
@@ -5014,7 +4967,6 @@ int main(int argc, char *argv[])
   numRanks = 1;
   myRank = 0;
 #endif
-  cuda_init(myRank);
   using Vec = alpaka::Vec<Dim, Idx>;
   HelloWorldKernel kernel;
   alpaka_utils::alpakaExecuteBaseKernel<Dim,Idx>(kernel,Vec{2,4,2},false);
@@ -5060,8 +5012,6 @@ int main(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);
   #endif
 
-    cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
-
     // timestep to solution 
     int its=0;
 
@@ -5099,7 +5049,6 @@ int main(int argc, char *argv[])
         if (its == num_iters) break;
       }
       // make sure GPU finished its work
-      cudaDeviceSynchronize();
 
       // Use reduced max elapsed time
         double elapsed_time;
@@ -5127,7 +5076,6 @@ int main(int argc, char *argv[])
       #ifdef SAMI
       DumpDomain(locDom) ;
       #endif
-      cudaDeviceReset();
 
       #if USE_MPI
         MPI_Finalize() ;

@@ -177,11 +177,14 @@ public:
   Real_t dtmax ;                 /* maximum allowable time increment */
   Int_t cycle ;                  /* iteration count for simulation */
 
-  Real_t* dthydro_h;             /* hydro time constraint */ 
-  Real_t* dtcourant_h;           /* courant time constraint */
-  Index_t* bad_q_h;              /* flag to indicate Q error */
-  Index_t* bad_vol_h;            /* flag to indicate volume error */
+          /* hydro time constraint */ 
+  Vector_d<Real_t> dthydro_d;
+        /* courant time constraint */
+ Vector_d<Real_t>  dtcourant_d;
 
+   Vector_d<Index_t>  bad_q_d;             /* flag to indicate Q error */
+        /* flag to indicate volume error */
+Vector_d<Index_t>  bad_vol_d;
   /* cuda Events to indicate completion of certain kernels */
   cudaEvent_t time_constraint_computed;
 
