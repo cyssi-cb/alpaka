@@ -4586,6 +4586,25 @@ void CalcTimeConstraintsForElems(Domain* domain)
       cudaCheckError();
     
     // TODO: CalcMinDtOneBlock
+    using CalcMinDtOneBlock = lulesh_port_kernels::CalcMinDtOneBlock_class<dimBlock>;
+      cudaCheckError();
+      CalcMinDtOneBlock CalcMinDtOneBlockKernel(
+         dev_mindthydro->raw(),
+         dev_mindtcourant->raw(),
+         domain->dtcourant_h,
+         domain->dthydro_h,
+         dimGrid
+      );
+      
+      using Dim2 = alpaka::DimInt<2>;
+      using Idx = std::size_t;
+      using Vec2 =alpaka::Vec<Dim2, Idx>;
+      std::cout<<"4600"<<std::endl;
+      cudaCheckError();
+      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcMinDtOneBlockKernel,Vec2{dimBlock,dimGrid},true);
+
+      std::cout<<"4604"<<std::endl;
+      cudaCheckError();
     
     #else
     cudaFuncSetCacheConfig(CalcTimeConstraintsForElems_kernel<dimBlock>, cudaFuncCachePreferShared);

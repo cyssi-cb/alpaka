@@ -1326,6 +1326,99 @@ class CalcMonotonicQRegionForElems_kernel_class{
    };
 
 };
+
+
+template<int block_size>
+class CalcMinDtOneBlock_class{
+
+    Real_t* dev_mindthydro;
+    Real_t* dev_mindtcourant;
+    Real_t* dtcourant;
+    Real_t* dthydro;
+    Index_t shared_array_size;
+    
+    public:
+    CalcMinDtOneBlock_class(
+        Real_t* dev_mindthydro, 
+        Real_t* dev_mindtcourant, 
+        Real_t* dtcourant, 
+        Real_t* dthydro, 
+        Index_t shared_array_size
+    ):dev_mindthydro(dev_mindthydro),dev_mindtcourant(dev_mindtcourant),dtcourant(dtcourant),dthydro(dthydro),shared_array_size(shared_array_size)
+    {};
+    
+    template<typename TAcc>
+    ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
+    {
+        using Dim = alpaka::Dim<TAcc>;
+        using Idx = alpaka::Idx<TAcc>;
+        using Vec = alpaka::Vec<Dim, Idx>;
+        using Vec1 = alpaka::Vec<alpaka::DimInt<1u>, Idx>;
+        
+        Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+        Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+        Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
+        Index_t i=static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+        Index_t tid = static_cast<Index_t>(globalThreadIdx[0u]);
+        Index_t blockIdx = static_cast<Index_t>(globalThreadExtent[0u]);
+        
+        //volatile __shared__ Real_t s_data[block_size];
+        auto& s_data = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
+
+  if (blockIdx==0)
+  {
+    if (tid < shared_array_size)
+      s_data[tid] = dev_mindtcourant[tid];
+    else
+      s_data[tid] = 1.0e20;
+
+    alpaka::syncBlockThreads(acc);
+
+    if (block_size >= 1024) { if (tid < 512) { s_data[tid] = min(s_data[tid],s_data[tid + 512]); } alpaka::syncBlockThreads(acc); }
+    if (block_size >=  512) { if (tid < 256) { s_data[tid] = min(s_data[tid],s_data[tid + 256]); } alpaka::syncBlockThreads(acc); }
+    if (block_size >=  256) { if (tid < 128) { s_data[tid] = min(s_data[tid],s_data[tid + 128]); } alpaka::syncBlockThreads(acc); }
+    if (block_size >=  128) { if (tid <  64) { s_data[tid] = min(s_data[tid],s_data[tid +  64]); } alpaka::syncBlockThreads(acc); }
+    if (tid <  32) { s_data[tid] = min(s_data[tid],s_data[tid +  32]); } 
+    if (tid <  16) { s_data[tid] = min(s_data[tid],s_data[tid +  16]); } 
+    if (tid <   8) { s_data[tid] = min(s_data[tid],s_data[tid +   8]); } 
+    if (tid <   4) { s_data[tid] = min(s_data[tid],s_data[tid +   4]); } 
+    if (tid <   2) { s_data[tid] = min(s_data[tid],s_data[tid +   2]); } 
+    if (tid <   1) { s_data[tid] = min(s_data[tid],s_data[tid +   1]); } 
+
+    if (tid<1)
+    {
+      *(dtcourant)= s_data[0];
+    }
+  }
+  else if (blockIdx==1)
+  {
+    if (tid < shared_array_size)
+      s_data[tid] = dev_mindthydro[tid];
+    else
+      s_data[tid] = 1.0e20;
+
+    alpaka::syncBlockThreads(acc);
+
+    if (block_size >= 1024) { if (tid < 512) { s_data[tid] = min(s_data[tid],s_data[tid + 512]); } alpaka::syncBlockThreads(acc); }
+    if (block_size >=  512) { if (tid < 256) { s_data[tid] = min(s_data[tid],s_data[tid + 256]); } alpaka::syncBlockThreads(acc); }
+    if (block_size >=  256) { if (tid < 128) { s_data[tid] = min(s_data[tid],s_data[tid + 128]); } alpaka::syncBlockThreads(acc); }
+    if (block_size >=  128) { if (tid <  64) { s_data[tid] = min(s_data[tid],s_data[tid +  64]); } alpaka::syncBlockThreads(acc); }
+    if (tid <  32) { s_data[tid] = min(s_data[tid],s_data[tid +  32]); } 
+    if (tid <  16) { s_data[tid] = min(s_data[tid],s_data[tid +  16]); } 
+    if (tid <   8) { s_data[tid] = min(s_data[tid],s_data[tid +   8]); } 
+    if (tid <   4) { s_data[tid] = min(s_data[tid],s_data[tid +   4]); } 
+    if (tid <   2) { s_data[tid] = min(s_data[tid],s_data[tid +   2]); } 
+    if (tid <   1) { s_data[tid] = min(s_data[tid],s_data[tid +   1]); } 
+
+    if (tid<1)
+    {
+      *(dthydro) = s_data[0];
+    }
+  }
+
+    };
+};
+
 template<int block_size>
 class CalcTimeConstraintsForElems_kernel_class{
 
