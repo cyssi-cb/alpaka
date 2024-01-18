@@ -8,10 +8,12 @@ namespace alpaka_utils{
         Executes a kernel object (class or struct) on the alpaka::ExampleDefaultAcc the workdiv
         can be specified through the threadsPerGrid parameter
     */
-    bool set=false;
+   //using Acc = alpaka::ExampleDefaultAcc<alpaka::DimInt<1>, std::size_t>;
+   //using Queue_ =alpaka::Queue<Acc, alpaka::Blocking>
+    //bool set=false;
     template <typename Dim,typename Idx,typename kernel>
     static int alpakaExecuteBaseKernel(const kernel &obj,const alpaka::Vec<Dim, Idx> threadsPerGrid, const bool blocking){
-        using Acc = alpaka::ExampleDefaultAcc<Dim, Idx>;
+        using Acc = alpaka::ExampleDefaultAcc<alpaka::DimInt<1>, Idx>;
         using Vec2_ = alpaka::Vec<alpaka::DimInt<2>, std::size_t>;
         cudaCheckError();
         std::cout << "Using alpaka accelerator: " << alpaka::getAccName<Acc>() << std::endl;
@@ -25,18 +27,19 @@ namespace alpaka_utils{
         std::cout<<"befdevAcc"<<std::endl;
         //static std::shared_ptr<alpaka::Dev<Acc>> ptr(devAcc(alpaka::getDevByIdx(alpaka::Platform<Acc>{},0)));
         std::cout<<"aftdevAcc"<<std::endl;
-        Queue_ queue(*devAcc);
+        static Queue_ queue(*devAcc);
         std::cout << "[DEBUG] Before elementsperthread" << std::endl;
         auto const elementsPerThread = alpaka::Vec<Dim, Idx>::all(static_cast<Idx>(1));
         std::cout << "[DEBUG] Before workdiv" << std::endl;
-        using WorkDiv = alpaka::WorkDivMembers<Dim, Idx>;
+        using WorkDiv = alpaka::WorkDivMembers<alpaka::DimInt<1>, Idx>;
         std::cout << "[DEBUG] Before workdiv call" << std::endl;
-        WorkDiv const workDiv = alpaka::getValidWorkDiv<Acc>(
+        auto const workDiv =WorkDiv{Idx(threadsPerGrid[1u]), Idx(threadsPerGrid[0u]), Idx(1)};
+        /*WorkDiv const workDiv = alpaka::getValidWorkDiv<Acc>(
             *devAcc,
             threadsPerGrid,
             elementsPerThread,
             false,
-            alpaka::GridBlockExtentSubDivRestrictions::Unrestricted);
+            alpaka::GridBlockExtentSubDivRestrictions::Unrestricted);*/
         std::cout << "[DEBUG] Before taskKernel" << std::endl;
         //alpaka::trait::GetAccDevProps<alpaka::Dev<Acc>>(*devAcc);
         auto const taskKernel = alpaka::createTaskKernel<Acc>(
@@ -48,6 +51,7 @@ namespace alpaka_utils{
         std::cout << "[DEBUG] Before return" << std::endl;
         return EXIT_SUCCESS;
     };
+
    
     
 }

@@ -52,6 +52,10 @@ namespace lulesh_port_kernels{
 using Index_t= std::int32_t;
 using Int_t=std::int32_t;
 //this needs adjustment when using float
+ALPAKA_FN_ACC inline auto FABS(Real_t arg1){
+   if(arg1<0)return (arg1*(-1));
+   else return arg1;
+}
 ALPAKA_FN_ACC inline auto FMAX(Real_t  arg1,Real_t  arg2)-> Real_t {return FMAX(arg1,arg2) ; }
 ALPAKA_FN_ACC auto AreaFace( const Real_t x0, const Real_t x1,
                  const Real_t x2, const Real_t x3,
@@ -802,7 +806,7 @@ ALPAKA_FN_ACC auto inline UpdateVolumesForElems_device(Index_t numElem, Real_t v
    Real_t tmpV ;
    tmpV = vnew[i] ;
 
-   if ( fabs(tmpV - Real_t(1.0)) < v_cut )
+   if ( FABS(tmpV - Real_t(1.0)) < v_cut )
       tmpV = Real_t(1.0) ;
    v[i] = tmpV ;
 }
@@ -839,7 +843,7 @@ ALPAKA_FN_ACC auto inline CalcPressureForElems_device(
 
       p_temp = bvc * e_old ;
 
-      if ( fabs(p_temp) <  p_cut )
+      if ( FABS(p_temp) <  p_cut )
         p_temp = Real_t(0.0) ;
 
       if ( vnewc >= eosvmax ) /* impossible condition here? */
@@ -868,7 +872,7 @@ ALPAKA_FN_ACC auto inline CalcEnergyForElems_device(Real_t& p_new, Real_t& e_new
 
    e_new = e_old - Real_t(0.5) * delvc * (p_old + q_old)
       + Real_t(0.5) * work;
-
+   printf("e_new_written%f",e_new);
    if (e_new  < emin ) {
       e_new = emin ;
    }
@@ -900,7 +904,7 @@ ALPAKA_FN_ACC auto inline CalcEnergyForElems_device(Real_t& p_new, Real_t& e_new
 
    e_new += Real_t(0.5) * work;
 
-   if (fabs(e_new) < e_cut) {
+   if (FABS(e_new) < e_cut) {
       e_new = Real_t(0.)  ;
    }
    if (     e_new  < emin ) {
@@ -932,7 +936,7 @@ ALPAKA_FN_ACC auto inline CalcEnergyForElems_device(Real_t& p_new, Real_t& e_new
                             - Real_t(8.0)*(pHalfStep + q_new)
                             + (p_new + q_tilde)) * delvc*sixth ;
 
-   if (fabs(e_new) < e_cut) {
+   if (FABS(e_new) < e_cut) {
       e_new = Real_t(0.)  ;
    }
    if ( e_new  < emin ) {
@@ -955,7 +959,7 @@ ALPAKA_FN_ACC auto inline CalcEnergyForElems_device(Real_t& p_new, Real_t& e_new
 
       q_new = (ssc*ql + qq) ;
 
-      if (fabs(q_new) < q_cut) q_new = Real_t(0.) ;
+      if (FABS(q_new) < q_cut) q_new = Real_t(0.) ;
    }
 
    return ;
@@ -1457,10 +1461,11 @@ class CalcTimeConstraintsForElems_kernel_class{
         
         Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
         Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+        //printf("Thread Extent:%d, %d",globalThreadExtent[0u],globalThreadIdx[0u]);
         Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
         int i=static_cast<int>(linearizedGlobalThreadIdx[0u]);
         int tid = static_cast<int>(globalThreadIdx[0u]);
-        
+        printf(" thread Id: %d" ,globalThreadIdx[0u]);
         //__shared__ volatile Real_t s_mindthydro[block_size];
         //__shared__ volatile Real_t s_mindtcourant[block_size];
 
@@ -1480,7 +1485,7 @@ class CalcTimeConstraintsForElems_kernel_class{
 
       // Computing dt_hydro
       if (vdov_tmp != Real_t(0.)) {
-         Real_t dtdvov = dvovmax / (fabs(vdov_tmp)+Real_t(1.e-20)) ;
+         Real_t dtdvov = dvovmax / (FABS(vdov_tmp)+Real_t(1.e-20)) ;
          if ( dthydro > dtdvov ) {
             dthydro = dtdvov ;
          }
@@ -1505,7 +1510,7 @@ class CalcTimeConstraintsForElems_kernel_class{
       if (dtcourant< mindtcourant)
         mindtcourant= dtcourant;
 
-      i += gridDim.x*blockDim.x;
+      i += globalThreadExtent[0u];
     }
 
     s_mindthydro[tid]   = mindthydro;
@@ -1698,7 +1703,8 @@ class ApplyMaterialPropertiesAndUpdateVolume_kernel_class{
     qq_temp = qq[zidx] ;
     ql_temp = ql[zidx] ;
     delvc_temp = delv[zidx];
-
+   //printf("%f , %f, %f, %f, %f, %f",e_temp,p_temp,q_temp,qq_temp,ql_temp)
+      //exit(0);
   for(int r=0; r < rep; r++)
   {
 
@@ -1731,14 +1737,16 @@ class ApplyMaterialPropertiesAndUpdateVolume_kernel_class{
 //    qq_old = qq[zidx] ;
 //    ql_old = ql[zidx] ;
 //    work = Real_t(0.) ;
+   //printf("Energy: %f\n",e_new);
+    //printf("EnergyMin: %f\n",emin);
 
     lulesh_port_kernels::CalcEnergyForElems_device(p_new, e_new, q_new, bvc, pbvc,
                  p_old, e_old,  q_old, compression, compHalfStep,
                  vnewc, work,  delvc, pmin,
                  p_cut, e_cut, q_cut, emin,
                  qq_old, ql_old, rho0, eosvmax, length);
- }//end for rep
-
+ }//end for r
+ //if(i==0)printf("Energy2: %f\n",e_new);
     p[zidx] = p_new ;
     e[zidx] = e_new ;
     q[zidx] = q_new ;
@@ -1821,9 +1829,9 @@ class CalcPositionAndVelocityForNodes_kernel_class{
             ydtmp = yd[i] + ydd[i] * dt ;
             zdtmp = zd[i] + zdd[i] * dt ;
 
-            if( fabs(xdtmp) < u_cut ) xdtmp = 0.0;
-            if( fabs(ydtmp) < u_cut ) ydtmp = 0.0;
-            if( fabs(zdtmp) < u_cut ) zdtmp = 0.0;
+            if( FABS(xdtmp) < u_cut ) xdtmp = 0.0;
+            if( FABS(ydtmp) < u_cut ) ydtmp = 0.0;
+            if( FABS(zdtmp) < u_cut ) zdtmp = 0.0;
  
             x[i] += xdtmp * dt;
             y[i] += ydtmp * dt;

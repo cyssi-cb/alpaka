@@ -4536,6 +4536,7 @@ void CalcTimeConstraintsForElems(Domain* domain)
       using Vec2 =alpaka::Vec<Dim2, Idx>;
       std::cout<<"4581"<<std::endl;
       cudaCheckError();
+      std::cout<<" CalcTimeConst with "<<dimBlock<<" "<<dimGrid<<std::endl;
       alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcTimeConstraintsKernel,Vec2{dimBlock,dimGrid},true);
 
       std::cout<<"4585"<<std::endl;
