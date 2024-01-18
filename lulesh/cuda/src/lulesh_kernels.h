@@ -1463,10 +1463,10 @@ class CalcTimeConstraintsForElems_kernel_class{
         
         //__shared__ volatile Real_t s_mindthydro[block_size];
         //__shared__ volatile Real_t s_mindtcourant[block_size];
-    printf("1\n");
+
     auto& s_mindthydro = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
     auto& s_mindtcourant = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
-      printf("2\n");
+
     Real_t mindthydro = Real_t(1.0e+20) ;
     Real_t mindtcourant = Real_t(1.0e+20) ;
 
@@ -1909,7 +1909,7 @@ class CalcAccelerationForNodes_kernel_class{
     template<typename TAcc>
     ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
     {
-        std::printf("[DEVICE] CalcAccelerationForNodes_kernel_class\n");
+
         using Dim = alpaka::Dim<TAcc>;
         using Idx = alpaka::Idx<TAcc>;
         using Vec = alpaka::Vec<Dim, Idx>;
@@ -1918,7 +1918,6 @@ class CalcAccelerationForNodes_kernel_class{
         Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
         Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
         int tid=static_cast<int>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
-        std::printf("device\n");
         if (tid < numNode)
         {
             Real_t one_over_nMass = Real_t(1.)/nodalMass[tid];
