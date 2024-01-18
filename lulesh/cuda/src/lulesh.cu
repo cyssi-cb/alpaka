@@ -2896,7 +2896,7 @@ void ApplyAccelerationBoundaryConditionsForNodes(Domain *domain)
         using Idx = std::size_t;
         using Vec2 =alpaka::Vec<Dim2, Idx>;
         std::cout<<"2921"<<std::endl;
-        //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyAccBoundaryKernel,Vec2{dimBlock,dimGrid},false);
+        alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyAccBoundaryKernel,Vec2{dimBlock,dimGrid},false);
         
         #else
         // CUDA Code
@@ -2924,7 +2924,7 @@ void ApplyAccelerationBoundaryConditionsForNodes(Domain *domain)
         using Idx = std::size_t;
         using Vec2 =alpaka::Vec<Dim2, Idx>;
         std::cout<<"2944"<<std::endl;
-        //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyAccBoundaryKernel,Vec2{dimBlock,dimGrid},true);
+        alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyAccBoundaryKernel,Vec2{dimBlock,dimGrid},true);
     
       #else
       // CUDA Code
@@ -2951,7 +2951,7 @@ void ApplyAccelerationBoundaryConditionsForNodes(Domain *domain)
         using Idx = std::size_t;
         using Vec2 =alpaka::Vec<Dim2, Idx>;
         std::cout<<"2969"<<std::endl;
-        //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyAccBoundaryKernel,Vec2{dimBlock,dimGrid},true);
+        alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyAccBoundaryKernel,Vec2{dimBlock,dimGrid},true);
     
     
     
