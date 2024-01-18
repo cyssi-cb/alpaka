@@ -1465,7 +1465,7 @@ class CalcTimeConstraintsForElems_kernel_class{
         Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
         int i=static_cast<int>(linearizedGlobalThreadIdx[0u]);
         int tid = static_cast<int>(globalThreadIdx[0u]);
-        printf(" thread Id: %d" ,globalThreadIdx[0u]);
+        printf(" globalThreadExtent: %d, %d, %d\n" ,globalThreadExtent[0u], globalThreadExtent[1u], blockIdx.x);
         //__shared__ volatile Real_t s_mindthydro[block_size];
         //__shared__ volatile Real_t s_mindtcourant[block_size];
 
@@ -1513,8 +1513,8 @@ class CalcTimeConstraintsForElems_kernel_class{
       i += globalThreadExtent[0u];
     }
 
-    s_mindthydro[tid]   = mindthydro;
-    s_mindtcourant[tid] = mindtcourant;
+    s_mindthydro[tid%block_size]   = mindthydro;
+    s_mindtcourant[tid%block_size] = mindtcourant;
 
     alpaka::syncBlockThreads(acc);
 
