@@ -295,7 +295,7 @@ ALPAKA_FN_ACC auto CalcElemVolume( const Real_t x0, const Real_t x1,
                const Real_t z4, const Real_t z5,
                const Real_t z6, const Real_t z7 ) -> Real_t
 {
-   printf("h\n");
+   //printf("h\n");
    Real_t twelveth = Real_t(1.0)/Real_t(12.0);
   Real_t dx61 = x6 - x1;
   Real_t dy61 = y6 - y1;
@@ -364,7 +364,7 @@ ALPAKA_FN_ACC auto CalcElemVolume( const Real_t x0, const Real_t x1,
 #undef TRIPLE_PRODUCT
 
   volume *= twelveth;
-  printf("%f, ",volume);
+  //printf("%f, ",volume);
 
   return volume ;
 }
@@ -872,7 +872,7 @@ ALPAKA_FN_ACC auto inline CalcEnergyForElems_device(Real_t& p_new, Real_t& e_new
 
    e_new = e_old - Real_t(0.5) * delvc * (p_old + q_old)
       + Real_t(0.5) * work;
-   printf("e_new_written%f",e_new);
+   //printf("e_new_written%f",e_new);
    if (e_new  < emin ) {
       e_new = emin ;
    }
@@ -1465,7 +1465,7 @@ class CalcTimeConstraintsForElems_kernel_class{
         Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
         int i=static_cast<int>(linearizedGlobalThreadIdx[0u]);
         int tid = static_cast<int>(globalThreadIdx[0u]);
-        printf(" globalThreadExtent: %d, %d, %d\n" ,globalThreadExtent[0u], globalThreadExtent[1u], blockIdx.x);
+        //printf(" globalThreadExtent: %d, %d, %d\n" ,globalThreadExtent[0u], globalThreadExtent[1u], blockIdx.x);
         //__shared__ volatile Real_t s_mindthydro[block_size];
         //__shared__ volatile Real_t s_mindtcourant[block_size];
 
@@ -2070,7 +2070,7 @@ class CalcVolumeForceForElems_kernel_class{
     template<typename TAcc>
     ALPAKA_FN_ACC auto operator()(TAcc const& acc) const -> void
     {
-
+   
         Real_t xn[8],yn[8],zn[8];
         Real_t xdn[8],ydn[8],zdn[8];
         Real_t dvdxn[8],dvdyn[8],dvdzn[8];
@@ -2092,10 +2092,12 @@ class CalcVolumeForceForElems_kernel_class{
       Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
       Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
       Index_t elem=static_cast<unsigned>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+      //printf("pointer %d ,elem %d\n",ss,ss[elem]);
+          printf("pointer %d ,elem %d\n",ss,ss[elem]);
       if (!elem < num_threads)return;
       Real_t volume = v[elem];
       Real_t det = volo[elem] * volume;
-
+  
       // Check for bad volume
       if (volume < 0.) {
         *bad_vol = elem; 
@@ -2311,7 +2313,7 @@ class CalcKinematicsAndMonotonicQGradient_kernel_class{
     volume = lulesh_port_kernels::CalcElemVolume(x_local[0], x_local[1], x_local[2], x_local[3], x_local[4], x_local[5], x_local[6], x_local[7], 
     y_local[0], y_local[1], y_local[2], y_local[3], y_local[4], y_local[5], y_local[6], y_local[7], 
     z_local[0], z_local[1], z_local[2], z_local[3], z_local[4], z_local[5], z_local[6], z_local[7]); 
-    printf("2,");
+    //printf("2,");
     relativeVolume = volume / volo[k] ; 
     vnew[k] = relativeVolume ;
 
