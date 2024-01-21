@@ -177,7 +177,7 @@ void compare(std::vector<std::string> & thisvec){
   using std::cout;
   using std::endl;
   std::vector<std::string> correctvec;
-  std::ifstream inFile("/home/tim/Studium/Alpaka_Project/alpaka/CalcVolumeForceForElems_kernel.txt");
+  std::ifstream inFile("/home/cyssi/Git/alpaka/CalcVolumeForceForElems_kernel.txt");
   if (inFile.is_open()) {
         std::string element;
 
@@ -2648,7 +2648,8 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
 
     const bool hourg_gt_zero = hgcoef > Real_t(0.0);
     #ifdef ALPAKA
-      std::cout<<"2673"<<std::endl;
+      std::cout<<"2673"<< std::endl;
+
       using CalcElemForce = lulesh_port_kernels::CalcVolumeForceForElems_kernel_class;
       CalcElemForce ElemForceKernel(domain->volo.raw(),
         domain->v.raw(), 
@@ -2678,7 +2679,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ElemForceKernel,Vec2{dimGrid,block_size},true);
             Vector_h h_n(domain->ss);
     for(int i=0;i<1000;i++){
-      std::cout<<"ss "<<h_n[i]<<std::endl;
+    //  std::cout<<"ss "<<h_n[i]<<std::endl;
     };
     std::vector<std::string> vec;
     std::cout<<"volo "<<domain->volo.size()<<std::endl;
@@ -2702,8 +2703,8 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     read(fx_elem,vec);
     read(fy_elem,vec);
     read(fz_elem,vec);*/
-    compare(vec);
-        exit(1);
+    //compare(vec);
+      //  exit(1);
       //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ElemForceKernel,Vec2{block_size,dimGrid},true);
       std::cout<<"2667"<<std::endl;
     #else
@@ -4617,7 +4618,7 @@ void CalcTimeConstraintsForElems(Domain* domain)
       cudaCheckError();
     
     // TODO: CalcMinDtOneBlock
-    using CalcMinDtOneBlock = lulesh_port_kernels::CalcMinDtOneBlock_class<dimBlock>;
+    using CalcMinDtOneBlock = lulesh_port_kernels::CalcMinDtOneBlock_class<max_dimGrid>;
       cudaCheckError();
       CalcMinDtOneBlock CalcMinDtOneBlockKernel(
          dev_mindthydro->raw(),
@@ -4632,7 +4633,7 @@ void CalcTimeConstraintsForElems(Domain* domain)
       using Vec2 =alpaka::Vec<Dim2, Idx>;
       std::cout<<"4600"<<std::endl;
       cudaCheckError();
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcMinDtOneBlockKernel,Vec2{dimBlock,dimGrid},true);
+      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcMinDtOneBlockKernel,Vec2{2, max_dimGrid},true); // Should be started with two blocks!
 
       std::cout<<"4604"<<std::endl;
       cudaCheckError();

@@ -1369,15 +1369,13 @@ class CalcMinDtOneBlock_class{
         //volatile __shared__ Real_t s_data[block_size];
         auto& s_data = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
 
-  if (blockIdx==0)
+  if (tid<block_size)
   {
     if (tid < shared_array_size)
       s_data[tid] = dev_mindtcourant[tid];
     else
       s_data[tid] = 1.0e20;
-
     alpaka::syncBlockThreads(acc);
-
     if (block_size >= 1024) { if (tid < 512) { s_data[tid] = min(s_data[tid],s_data[tid + 512]); } alpaka::syncBlockThreads(acc); }
     if (block_size >=  512) { if (tid < 256) { s_data[tid] = min(s_data[tid],s_data[tid + 256]); } alpaka::syncBlockThreads(acc); }
     if (block_size >=  256) { if (tid < 128) { s_data[tid] = min(s_data[tid],s_data[tid + 128]); } alpaka::syncBlockThreads(acc); }
@@ -1388,21 +1386,22 @@ class CalcMinDtOneBlock_class{
     if (tid <   4) { s_data[tid] = min(s_data[tid],s_data[tid +   4]); } 
     if (tid <   2) { s_data[tid] = min(s_data[tid],s_data[tid +   2]); } 
     if (tid <   1) { s_data[tid] = min(s_data[tid],s_data[tid +   1]); } 
-
     if (tid<1)
     {
       *(dtcourant)= s_data[0];
     }
+
   }
-  else if (blockIdx==1)
+  else if (tid>block_size)
   {
-    if (tid < shared_array_size)
+    tid = tid%block_size; // We need the threadId within one block, but we only have two blocks
+    if (tid < shared_array_size){
       s_data[tid] = dev_mindthydro[tid];
-    else
+    }
+    else{
       s_data[tid] = 1.0e20;
-
+    } 
     alpaka::syncBlockThreads(acc);
-
     if (block_size >= 1024) { if (tid < 512) { s_data[tid] = min(s_data[tid],s_data[tid + 512]); } alpaka::syncBlockThreads(acc); }
     if (block_size >=  512) { if (tid < 256) { s_data[tid] = min(s_data[tid],s_data[tid + 256]); } alpaka::syncBlockThreads(acc); }
     if (block_size >=  256) { if (tid < 128) { s_data[tid] = min(s_data[tid],s_data[tid + 128]); } alpaka::syncBlockThreads(acc); }
@@ -1413,7 +1412,6 @@ class CalcMinDtOneBlock_class{
     if (tid <   4) { s_data[tid] = min(s_data[tid],s_data[tid +   4]); } 
     if (tid <   2) { s_data[tid] = min(s_data[tid],s_data[tid +   2]); } 
     if (tid <   1) { s_data[tid] = min(s_data[tid],s_data[tid +   1]); } 
-
     if (tid<1)
     {
       *(dthydro) = s_data[0];
@@ -2031,7 +2029,7 @@ class CalcVolumeForceForElems_kernel_class{
     Index_t padded_numElem; 
     Index_t * nodelist;
     Real_t * elemMass;
-    Real_t *__restrict__ ss,*__restrict__ x,*__restrict__ y,*__restrict__ z,*__restrict__ xd,*__restrict__ yd,*__restrict__ zd,*__restrict__ fx_elem,*__restrict__ fy_elem,*__restrict__ fz_elem;
+    Real_t *__restrict__ ss,* x,* y,* z,* xd,* yd,* zd,*__restrict__ fx_elem,*__restrict__ fy_elem,*__restrict__ fz_elem;
 
     Real_t coefficient;
     Index_t* __restrict__ bad_vol;
@@ -2050,8 +2048,8 @@ class CalcVolumeForceForElems_kernel_class{
     Index_t * __restrict__ nodelist,
     Real_t *   __restrict__ ss, 
     Real_t * __restrict__ elemMass,
-    Real_t * __restrict__x,   Real_t * __restrict__y,  Real_t * __restrict__ z,
-    Real_t * __restrict__xd,  Real_t * __restrict__yd,  Real_t * __restrict__zd,
+    Real_t * x,   Real_t * y,  Real_t *  z,
+    Real_t * xd,  Real_t * yd,  Real_t * zd,
     //TextureObj<Real_t> x,  TextureObj<Real_t> y,  TextureObj<Real_t> z,
     //TextureObj<Real_t> xd,  TextureObj<Real_t> yd,  TextureObj<Real_t> zd,
     //TextureObj<Real_t>* x,  TextureObj<Real_t>* y,  TextureObj<Real_t>* z,
@@ -2062,7 +2060,7 @@ class CalcVolumeForceForElems_kernel_class{
     Index_t*  bad_vol,
     const Index_t num_threads,
     bool hour_gt_zero):volo(volo),ss(ss),x(x),y(y),z(z),xd(xd),yd(yd),zd(zd),
-    fx_elem(fx_elem),fy_elem(fy_elem),fz_elem(fz_elem),coefficient(coefficient),bad_vol(bad_vol),num_threads(num_threads),hour_gt_zero(hour_gt_zero){
+    fx_elem(fx_elem),fy_elem(fy_elem),fz_elem(fz_elem),coefficient(coefficient),bad_vol(bad_vol),num_threads(num_threads),hour_gt_zero(hour_gt_zero),v(v),p(p),q(q),nodelist(nodelist){
         this->elemMass=elemMass;
 
 
@@ -2091,24 +2089,30 @@ class CalcVolumeForceForElems_kernel_class{
       // values are obtained for a global scope.
       Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
       Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
-      Index_t elem=static_cast<unsigned>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+      Index_t elem=static_cast<Index_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
       //printf("pointer %d ,elem %d\n",ss,ss[elem]);
-          printf("pointer %d ,elem %d\n",ss,ss[elem]);
-      if (!elem < num_threads)return;
+          
+      if (elem < num_threads){
+      //printf("Elem: %d\n", elem);
+      //printf("pointer %d ,ss[%d]: %d\n",ss, elem, ss[elem]);
       Real_t volume = v[elem];
+
       Real_t det = volo[elem] * volume;
-  
+      //printf("Elem: %d\n", elem);
       // Check for bad volume
       if (volume < 0.) {
         *bad_vol = elem; 
       }
 
       Real_t ss1 = ss[elem];
-      Real_t mass1 = elemMass[elem];
-      Real_t sigxx = -p[elem] - q[elem];
 
+      Real_t mass1 = elemMass[elem];
+      //printf("1\n");
+      Real_t sigxx = -p[elem] - q[elem];
+      //printf("2\n");
       Index_t n[8];
       for (int i=0;i<8;i++) {
+        //printf("3\n");
         n[i] = nodelist[elem+i*padded_numElem];
       }
 
@@ -2120,7 +2124,8 @@ class CalcVolumeForceForElems_kernel_class{
       //  zn[i] =z[n[i]];
       //}
         //vectorize later
-      for (int i=0;i<8;i++)xn[i] =x[n[i]];
+
+      for (int i=0;i<8;i++) xn[i] =x[n[i]];
 
       for (int i=0;i<8;i++)yn[i] =y[n[i]];
 
@@ -2129,7 +2134,7 @@ class CalcVolumeForceForElems_kernel_class{
 
       Real_t volume13 = cbrt(det);
       Real_t coefficient2 = - hourg * Real_t(0.01) * ss1 * mass1 / volume13;
-
+      printf("1\n");
       /*************************************************/
       /*    compute the volume derivatives             */
       /*************************************************/
@@ -2163,6 +2168,7 @@ class CalcVolumeForceForElems_kernel_class{
 
       if (this->hour_gt_zero)
       {
+
         /*************************************************/
         /*    CalcFBHourglassForceForElems               */
         /*************************************************/
@@ -2194,6 +2200,7 @@ class CalcVolumeForceForElems_kernel_class{
         );
 
       }
+
       for (int node=0;node<8;node++)
       {
         Index_t store_loc = elem+padded_numElem*node;
@@ -2201,7 +2208,8 @@ class CalcVolumeForceForElems_kernel_class{
         fy_elem[store_loc]=hgfy[node]; 
         fz_elem[store_loc]=hgfz[node];
       }
-      // If elem < numElem
+
+      }// If elem < numElem
 };//end alpaka function
 };//end class
 class CalcKinematicsAndMonotonicQGradient_kernel_class{

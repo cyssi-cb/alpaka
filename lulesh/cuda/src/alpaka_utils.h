@@ -24,15 +24,10 @@ namespace alpaka_utils{
             #define Queue_ alpaka::Queue<Acc, alpaka::NonBlocking>
         }
         static auto const devAcc=std::make_shared<alpaka::Dev<Acc>>(alpaka::getDevByIdx(alpaka::Platform<Acc>{},0));
-        std::cout<<"befdevAcc"<<std::endl;
         //static std::shared_ptr<alpaka::Dev<Acc>> ptr(devAcc(alpaka::getDevByIdx(alpaka::Platform<Acc>{},0)));
-        std::cout<<"aftdevAcc"<<std::endl;
         static Queue_ queue(*devAcc);
-        std::cout << "[DEBUG] Before elementsperthread" << std::endl;
         auto const elementsPerThread = alpaka::Vec<Dim, Idx>::all(static_cast<Idx>(1));
-        std::cout << "[DEBUG] Before workdiv" << std::endl;
         using WorkDiv = alpaka::WorkDivMembers<alpaka::DimInt<1>, Idx>;
-        std::cout << "[DEBUG] Before workdiv call" << std::endl;
         auto const workDiv =WorkDiv{Idx(threadsPerGrid[1u]), Idx(threadsPerGrid[0u]), Idx(1)};
         /*WorkDiv const workDiv = alpaka::getValidWorkDiv<Acc>(
             *devAcc,
@@ -40,15 +35,12 @@ namespace alpaka_utils{
             elementsPerThread,
             false,
             alpaka::GridBlockExtentSubDivRestrictions::Unrestricted);*/
-        std::cout << "[DEBUG] Before taskKernel" << std::endl;
         //alpaka::trait::GetAccDevProps<alpaka::Dev<Acc>>(*devAcc);
         auto const taskKernel = alpaka::createTaskKernel<Acc>(
             workDiv,
             obj);
-	std::cout << "[DEBUG] Before enqueue" << std::endl;
         alpaka::enqueue(queue, taskKernel);
         alpaka::wait(queue);
-        std::cout << "[DEBUG] Before return" << std::endl;
         return EXIT_SUCCESS;
     };
 
