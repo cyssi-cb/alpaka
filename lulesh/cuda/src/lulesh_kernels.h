@@ -56,7 +56,7 @@ ALPAKA_FN_ACC inline auto FABS(Real_t arg1){
    if(arg1<0)return (arg1*(-1));
    else return arg1;
 }
-ALPAKA_FN_ACC inline auto FMAX(Real_t  arg1,Real_t  arg2)-> Real_t {return FMAX(arg1,arg2) ; }
+ALPAKA_FN_ACC inline auto FMAX(Real_t  arg1,Real_t  arg2)-> Real_t {return fmax(arg1,arg2) ; }
 ALPAKA_FN_ACC auto AreaFace( const Real_t x0, const Real_t x1,
                  const Real_t x2, const Real_t x3,
                  const Real_t y0, const Real_t y1,
@@ -247,12 +247,13 @@ ALPAKA_FN_ACC auto CalcElemCharacteristicLength( const Real_t x[8],
                                      const Real_t volume)-> Real_t
 {
    Real_t a, charLength = Real_t(0.0);
+   
 
    a = lulesh_port_kernels::AreaFace(x[0],x[1],x[2],x[3],
                 y[0],y[1],y[2],y[3],
                 z[0],z[1],z[2],z[3]) ; // 38
-   charLength = lulesh_port_kernels::FMAX(a,charLength) ;
-
+   charLength = lulesh_port_kernels::FMAX(a,charLength) ; 
+   
    a = lulesh_port_kernels::AreaFace(x[4],x[5],x[6],x[7],
                 y[4],y[5],y[6],y[7],
                 z[4],z[5],z[6],z[7]) ;
@@ -279,7 +280,7 @@ ALPAKA_FN_ACC auto CalcElemCharacteristicLength( const Real_t x[8],
    charLength = lulesh_port_kernels::FMAX(a,charLength) ;
 
    charLength = Real_t(4.0) * volume / sqrt(charLength);
-
+   
    return charLength;
 }
 ALPAKA_FN_ACC auto CalcElemVolume( const Real_t x0, const Real_t x1,
@@ -1190,7 +1191,7 @@ class CalcMonotonicQRegionForElems_kernel_class{
         Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
         int ielem=static_cast<int>(linearizedGlobalThreadIdx[0u]);
         
-            if (ielem<elength) {
+      if (ielem<elength) {
       Real_t qlin, qquad ;
       Real_t phixi, phieta, phizeta ;
       Index_t i = regElemlist[ielem];
@@ -1325,7 +1326,6 @@ class CalcMonotonicQRegionForElems_kernel_class{
       // Don't allow excessive artificial viscosity
       if (q[i] > qstop)
         *(bad_q) = i;
-
    }
    };
 
@@ -1371,11 +1371,23 @@ class CalcMinDtOneBlock_class{
 
   if (tid<block_size)
   {
-    if (tid < shared_array_size)
+
+    if (tid == 0){
+      for(int ghj = 0; ghj<8; ghj++){
+        printf("dev_mindtcourant[%d] is %f\n", ghj, dev_mindtcourant[ghj]);
+      }
+    
+    }
+    alpaka::syncBlockThreads(acc);    
+    if (tid < shared_array_size){
       s_data[tid] = dev_mindtcourant[tid];
-    else
+      printf("tid %d and dev_mindtcourant %f\n", tid, dev_mindtcourant[tid]);
+    }
+    else{
       s_data[tid] = 1.0e20;
+    }
     alpaka::syncBlockThreads(acc);
+
     if (block_size >= 1024) { if (tid < 512) { s_data[tid] = min(s_data[tid],s_data[tid + 512]); } alpaka::syncBlockThreads(acc); }
     if (block_size >=  512) { if (tid < 256) { s_data[tid] = min(s_data[tid],s_data[tid + 256]); } alpaka::syncBlockThreads(acc); }
     if (block_size >=  256) { if (tid < 128) { s_data[tid] = min(s_data[tid],s_data[tid + 128]); } alpaka::syncBlockThreads(acc); }
@@ -1389,6 +1401,7 @@ class CalcMinDtOneBlock_class{
     if (tid<1)
     {
       *(dtcourant)= s_data[0];
+      printf("s_data is %f\n", s_data[0]);
     }
 
   }
@@ -1462,7 +1475,7 @@ class CalcTimeConstraintsForElems_kernel_class{
         //printf("Thread Extent:%d, %d",globalThreadExtent[0u],globalThreadIdx[0u]);
         Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
         int i=static_cast<int>(linearizedGlobalThreadIdx[0u]);
-        int tid = static_cast<int>(globalThreadIdx[0u]);
+        int tid = i%block_size;
         //printf(" globalThreadExtent: %d, %d, %d\n" ,globalThreadExtent[0u], globalThreadExtent[1u], blockIdx.x);
         //__shared__ volatile Real_t s_mindthydro[block_size];
         //__shared__ volatile Real_t s_mindtcourant[block_size];
@@ -1479,6 +1492,7 @@ class CalcTimeConstraintsForElems_kernel_class{
     while (i<length) {
 
       Index_t indx = matElemlist[i] ;
+
       Real_t vdov_tmp = vdov[indx];
 
       // Computing dt_hydro
@@ -1493,13 +1507,14 @@ class CalcTimeConstraintsForElems_kernel_class{
 
       // Computing dt_courant
       Real_t ss_tmp = ss[indx];
+
       Real_t area_tmp = arealg[indx];
       Real_t dtf = ss_tmp * ss_tmp ;
-    
+
       dtf += ((vdov_tmp < 0.) ? qqc2*area_tmp*area_tmp*vdov_tmp*vdov_tmp : 0.);
-
+          //printf("DTF IS %f and sqrt(dtf) is %.24lf and area_tmp is %f\n", dtf, sqrt(dtf), area_tmp);
       dtf = area_tmp / sqrt(dtf) ;
-
+ printf("DTF IS %f and area is %f \n", dtf, area_tmp);
       /* determine minimum timestep with its corresponding elem */
       if (vdov_tmp != Real_t(0.) && dtf < dtcourant) {
         dtcourant = dtf ;
@@ -1511,10 +1526,21 @@ class CalcTimeConstraintsForElems_kernel_class{
       i += globalThreadExtent[0u];
     }
 
-    s_mindthydro[tid%block_size]   = mindthydro;
-    s_mindtcourant[tid%block_size] = mindtcourant;
+    s_mindthydro[tid]   = mindthydro;
+    s_mindtcourant[tid] = mindtcourant;
 
     alpaka::syncBlockThreads(acc);
+    
+    // TODO: FIX THIS!! Apparently there are 0s in mindtcourant which will propagate through the min() into dev_mindtcourant
+    if (tid==0) {
+        for(int i = 0; i<block_size;i++){
+            printf("s_mindtcourant[i] is %f\n", s_mindtcourant[i]);
+            if( s_mindtcourant[i] == 0){
+                s_mindtcourant[i] =  Real_t(1.0e+20);
+            }
+        }
+    }
+     alpaka::syncBlockThreads(acc);
 
     // Do shared memory reduction
     if (block_size >= 1024) { 
@@ -1569,8 +1595,9 @@ class CalcTimeConstraintsForElems_kernel_class{
 
     // Store in global memory
     if (tid==0) {
-      dev_mindtcourant[blockIdx.x] = s_mindtcourant[0];
-      dev_mindthydro[blockIdx.x] = s_mindthydro[0];
+      dev_mindtcourant[static_cast<Index_t>(((i+block_size)/block_size)-1)] = s_mindtcourant[0];
+      printf("WRITING %f TO DEV_MINDTCOURANT\n", s_mindtcourant[0]);
+      dev_mindthydro[static_cast<Index_t>(((i+block_size)/block_size)-1)] = s_mindthydro[0];
     }
     };
 };
@@ -1993,7 +2020,7 @@ class AddNodeForcesFromElems_kernel_class{
         
         Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
         Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
-        Int_t tid=static_cast<unsigned int>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+        Int_t tid=static_cast<Int_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
     
         if (tid < num_threads)
         {
@@ -2029,7 +2056,7 @@ class CalcVolumeForceForElems_kernel_class{
     Index_t padded_numElem; 
     Index_t * nodelist;
     Real_t * elemMass;
-    Real_t *__restrict__ ss,* x,* y,* z,* xd,* yd,* zd,*__restrict__ fx_elem,*__restrict__ fy_elem,*__restrict__ fz_elem;
+    Real_t * ss,* x,* y,* z,* xd,* yd,* zd,* fx_elem,* fy_elem,* fz_elem;
 
     Real_t coefficient;
     Index_t* __restrict__ bad_vol;
@@ -2045,9 +2072,9 @@ class CalcVolumeForceForElems_kernel_class{
     Real_t hourg,
     Index_t numElem, 
     Index_t padded_numElem, 
-    Index_t * __restrict__ nodelist,
-    Real_t *   __restrict__ ss, 
-    Real_t * __restrict__ elemMass,
+    Index_t * nodelist,
+    Real_t *   ss, 
+    Real_t * elemMass,
     Real_t * x,   Real_t * y,  Real_t *  z,
     Real_t * xd,  Real_t * yd,  Real_t * zd,
     //TextureObj<Real_t> x,  TextureObj<Real_t> y,  TextureObj<Real_t> z,
@@ -2060,7 +2087,7 @@ class CalcVolumeForceForElems_kernel_class{
     Index_t*  bad_vol,
     const Index_t num_threads,
     bool hour_gt_zero):volo(volo),ss(ss),x(x),y(y),z(z),xd(xd),yd(yd),zd(zd),
-    fx_elem(fx_elem),fy_elem(fy_elem),fz_elem(fz_elem),coefficient(coefficient),bad_vol(bad_vol),num_threads(num_threads),hour_gt_zero(hour_gt_zero),v(v),p(p),q(q),nodelist(nodelist){
+    fx_elem(fx_elem),fy_elem(fy_elem),fz_elem(fz_elem),coefficient(coefficient),bad_vol(bad_vol),num_threads(num_threads),hour_gt_zero(hour_gt_zero),v(v),p(p),q(q),nodelist(nodelist),padded_numElem(padded_numElem),hourg(hourg),numElem(numElem){
         this->elemMass=elemMass;
 
 
@@ -2091,14 +2118,11 @@ class CalcVolumeForceForElems_kernel_class{
       Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
       Index_t elem=static_cast<Index_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
       //printf("pointer %d ,elem %d\n",ss,ss[elem]);
-          
+
       if (elem < num_threads){
-      //printf("Elem: %d\n", elem);
-      //printf("pointer %d ,ss[%d]: %d\n",ss, elem, ss[elem]);
       Real_t volume = v[elem];
 
       Real_t det = volo[elem] * volume;
-      //printf("Elem: %d\n", elem);
       // Check for bad volume
       if (volume < 0.) {
         *bad_vol = elem; 
@@ -2107,12 +2131,10 @@ class CalcVolumeForceForElems_kernel_class{
       Real_t ss1 = ss[elem];
 
       Real_t mass1 = elemMass[elem];
-      //printf("1\n");
       Real_t sigxx = -p[elem] - q[elem];
-      //printf("2\n");
+
       Index_t n[8];
       for (int i=0;i<8;i++) {
-        //printf("3\n");
         n[i] = nodelist[elem+i*padded_numElem];
       }
 
@@ -2134,7 +2156,6 @@ class CalcVolumeForceForElems_kernel_class{
 
       Real_t volume13 = cbrt(det);
       Real_t coefficient2 = - hourg * Real_t(0.01) * ss1 * mass1 / volume13;
-      printf("1\n");
       /*************************************************/
       /*    compute the volume derivatives             */
       /*************************************************/
@@ -2203,10 +2224,15 @@ class CalcVolumeForceForElems_kernel_class{
 
       for (int node=0;node<8;node++)
       {
+
         Index_t store_loc = elem+padded_numElem*node;
+     //  printf("store_loc is: %d\nElem is %d\npadded_numElem: %d\n", store_loc,elem,padded_numElem);
         fx_elem[store_loc]=hgfx[node]; 
-        fy_elem[store_loc]=hgfy[node]; 
+
+        fy_elem[store_loc]=hgfy[node];
+
         fz_elem[store_loc]=hgfz[node];
+
       }
 
       }// If elem < numElem
@@ -2227,7 +2253,7 @@ class CalcKinematicsAndMonotonicQGradient_kernel_class{
     const Real_t* __restrict__ zd;
     Real_t* __restrict__ vnew;
     Real_t* __restrict__ delv;
-    Real_t* __restrict__ arealg;
+    Real_t*  arealg;
     Real_t* __restrict__ dxx;
     Real_t* __restrict__ dyy;
     Real_t* __restrict__ dzz;
@@ -2253,7 +2279,7 @@ class CalcKinematicsAndMonotonicQGradient_kernel_class{
     const Real_t* __restrict__ zd,
     Real_t* __restrict__ vnew,
     Real_t* __restrict__ delv,
-    Real_t* __restrict__ arealg,
+    Real_t* arealg,
     Real_t* __restrict__ dxx,
     Real_t* __restrict__ dyy,
     Real_t* __restrict__ dzz,
@@ -2317,11 +2343,11 @@ class CalcKinematicsAndMonotonicQGradient_kernel_class{
 
 
     // volume calculations
-    //printf("1,");
+
     volume = lulesh_port_kernels::CalcElemVolume(x_local[0], x_local[1], x_local[2], x_local[3], x_local[4], x_local[5], x_local[6], x_local[7], 
     y_local[0], y_local[1], y_local[2], y_local[3], y_local[4], y_local[5], y_local[6], y_local[7], 
     z_local[0], z_local[1], z_local[2], z_local[3], z_local[4], z_local[5], z_local[6], z_local[7]); 
-    //printf("2,");
+
     relativeVolume = volume / volo[k] ; 
     vnew[k] = relativeVolume ;
 
@@ -2391,11 +2417,6 @@ class CalcKinematicsAndMonotonicQGradient_kernel_class{
   if (relativeVolume < 0)
     *bad_vol = k;
   }
-
-
-
-
-
 
     }//end function
 };//end class

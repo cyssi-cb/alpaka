@@ -79,6 +79,7 @@ Additional BSD Notice
 #include "allocator.h"
 #include "cuda_profiler_api.h"
 #include "../test/alpaka_vector_test.h"
+
 /*
 #ifdef USE_MPI
 #include <mpi.h>
@@ -815,6 +816,7 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
 
     SetupConnectivityBC(domain, edgeElems);
     cout<<"endfirstloop"<<endl;
+
   }
   else
   {
@@ -1189,7 +1191,17 @@ std::cout<<"1129"<<std::endl;
   // simulate effects of ALE on the lagrange solver
 
   domain->CreateRegionIndexSets(nr, balance);
-
+    
+    cout << "[DEBUG] Printing domain variables:\n\ndomain->m_tp: " << domain->m_tp << endl << "domain->m_numRanks: " << domain->m_numRanks << endl;
+    cout << "domain->m_colLoc: " << domain->m_colLoc << endl << "domain->m_rowLoc: " << domain->m_rowLoc << endl << "domain->m_planeLoc: " << domain->m_planeLoc << endl;
+    cout << "domain->numElem: " << domain->numElem << endl << "domain->padded_numElem: " << domain->padded_numElem << endl << "domain->numNode: " << domain->numNode << endl;
+    cout << "domain->padded_numNode: " << domain->padded_numNode << endl << "domain->numSymmX: " << domain->numSymmX << endl << "domain->numSymmY: " << domain->numSymmY << endl;
+    cout << "domain->numSymmZ: " << domain->numSymmZ << endl << "domain->symmZ: " << domain->symmZ[0] << endl << "domain->symmX: " << domain->symmX[0] << endl << "domain->symmY: " << domain->symmY[0] << endl;
+    cout << "domain->nodalMass[100]: " << domain->nodalMass[100] << endl << "domain->volo[0]: " << domain->volo[100] << endl << "domain->elemMass[0]: " << domain->elemMass[100] << endl;
+    cout << "domain->dtcourant_d: " << domain->dtcourant_d[0] << endl;
+    cout << "domain->deltatime_h: " << domain->deltatime_h << endl << "domain->cost: " << domain->cost << endl;
+    cout << "nr: " << nr << endl << "balance: " << balance << endl;
+   // exit(1);
   return domain ;
 }
 
@@ -1385,9 +1397,11 @@ void TimeIncrement(Domain* domain)
       Real_t gnewdt = Real_t(1.0e+20) ;
       Real_t newdt;
       if ( domain->dtcourant_d[0] < gnewdt) { 
+         printf("domain->dtcourant_d[0] %f\n", domain->dtcourant_d[0]);
          gnewdt = domain->dtcourant_d[0] / Real_t(2.0) ;
       }
       if ( domain->dthydro_d[0] < gnewdt) { 
+      printf("43\n");
          gnewdt = domain->dthydro_d[0] * Real_t(2.0) / Real_t(3.0) ;
       }
 
@@ -1401,18 +1415,22 @@ void TimeIncrement(Domain* domain)
 
       Real_t olddt = domain->deltatime_h;
       ratio = newdt / olddt ;
+      printf("[DEBUUUGGGGG] ratio: %f\n", ratio);
       if (ratio >= Real_t(1.0)) {
          if (ratio < domain->deltatimemultlb) {
+         printf("1\n");
             newdt = olddt ;
          }
          else if (ratio > domain->deltatimemultub) {
             newdt = olddt*domain->deltatimemultub ;
+            printf("2\n");
          }
       }
 
       if (newdt > domain->dtmax) {
          newdt = domain->dtmax ;
       }
+      printf("[DEEEEBBBBUUUUGGGGGG] domain->dtmax %f\nnewdt is %f\nolddt %f\ndomain->deltatimemultub %f\n", domain->dtmax,newdt,olddt,domain->deltatimemultub);
       domain->deltatime_h = newdt ;
    }
 
@@ -1423,6 +1441,7 @@ void TimeIncrement(Domain* domain)
    }
 
    if (targetdt < domain->deltatime_h) {
+   printf("targetdt is %f\n", targetdt);
       domain->deltatime_h = targetdt ;
    }
 
@@ -4593,11 +4612,15 @@ void CalcTimeConstraintsForElems(Domain* domain)
     const int max_dimGrid = 1024;
     const int dimBlock = 128;
     int dimGrid=std::min(max_dimGrid,PAD_DIV(length,dimBlock));
+    std::cout << "domain->numElem is : " << domain->numElem << std::endl;
     
-    Vector_d<Real_t>* dev_mindtcourant= Allocator< Vector_d<Real_t> >::allocate(dimGrid);
+    Vector_d<Real_t>* dev_mindtcourant= Allocator<Vector_d<Real_t>>::allocate(dimGrid);
     Vector_d<Real_t>* dev_mindthydro  = Allocator< Vector_d<Real_t> >::allocate(dimGrid);
-
+    //auto bufDevice = alpaka::allocBuf<Real_t, Idx>(alpaka::ExampleDefaultAcc<alpaka::DimInt<1>, Idx>, dimGrid*sizeof(Real_t));
     #ifdef ALPAKA
+    for(int i = 0; i<8; i++){
+        printf("BEFORE: dev_mindtcourant[%d] is %f\n", i, dev_mindtcourant[i]);
+    }
     using CalcTimeConstraintsForElems = lulesh_port_kernels::CalcTimeConstraintsForElems_kernel_class<dimBlock>;
       cudaCheckError();
       CalcTimeConstraintsForElems CalcTimeConstraintsKernel(
@@ -4612,11 +4635,13 @@ void CalcTimeConstraintsForElems(Domain* domain)
       std::cout<<"4581"<<std::endl;
       cudaCheckError();
       std::cout<<" CalcTimeConst with "<<dimBlock<<" "<<dimGrid<<std::endl;
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcTimeConstraintsKernel,Vec2{dimBlock,dimGrid},true);
+      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcTimeConstraintsKernel,Vec2{dimGrid,dimBlock},true);
 
       std::cout<<"4585"<<std::endl;
       cudaCheckError();
-    
+    for(int i = 0; i<8; i++){
+        printf("PAST FIRST KERNEL: dev_mindtcourant[%d] is %f\n", i, dev_mindtcourant[i][0]);
+    } 
     // TODO: CalcMinDtOneBlock
     using CalcMinDtOneBlock = lulesh_port_kernels::CalcMinDtOneBlock_class<max_dimGrid>;
       cudaCheckError();
@@ -4634,7 +4659,9 @@ void CalcTimeConstraintsForElems(Domain* domain)
       std::cout<<"4600"<<std::endl;
       cudaCheckError();
       alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcMinDtOneBlockKernel,Vec2{2, max_dimGrid},true); // Should be started with two blocks!
-
+    for(int i = 0; i<8; i++){
+        printf("AFTER: dev_mindtcourant[%d] is %f\n", i, *dev_mindtcourant->raw());
+    }
       std::cout<<"4604"<<std::endl;
       cudaCheckError();
     
@@ -5108,16 +5135,33 @@ int main(int argc, char *argv[])
     #endif
     std::cout<<"4748"<<std::endl;
 
-      //while(locDom->time_h < locDom->stoptime)
-      while(its<231)
+      while(locDom->time_h < locDom->stoptime)
+      //while(its<231)
       {
         // this has been moved after computation of volume forces to hide launch latencies
         //TimeIncrement(locDom) ;
 
         LagrangeLeapFrog(locDom) ;
+    
 
         checkErrors(locDom,its,myRank);
-
+    static int counter = 1;
+    if(counter == 2){
+    {
+    using namespace std; 
+    cout << "[DEBUG] Printing locDom variables:\n\nlocDom->m_tp: " << locDom->m_tp << endl << "locDom->m_numRanks: " << locDom->m_numRanks << endl;
+    cout << "locDom->m_colLoc: " << locDom->m_colLoc << endl << "locDom->m_rowLoc: " << locDom->m_rowLoc << endl << "locDom->m_planeLoc: " << locDom->m_planeLoc << endl;
+    cout << "locDom->numElem: " << locDom->numElem << endl << "locDom->padded_numElem: " << locDom->padded_numElem << endl << "locDom->numNode: " << locDom->numNode << endl;
+    cout << "locDom->padded_numNode: " << locDom->padded_numNode << endl << "locDom->numSymmX: " << locDom->numSymmX << endl << "locDom->numSymmY: " << locDom->numSymmY << endl;
+    cout << "locDom->numSymmZ: " << locDom->numSymmZ << endl << "locDom->symmZ: " << locDom->symmZ[0] << endl << "locDom->symmX: " << locDom->symmX[0] << endl << "locDom->symmY: " << locDom->symmY[0] << endl;
+    cout << "locDom->nodalMass[0]: " << locDom->nodalMass[100] << endl << "locDom->volo[0]: " << locDom->volo[100] << endl << "locDom->elemMass[0]: " << locDom->elemMass[100] << endl;
+    cout << "locDom->deltatime_h: " << locDom->deltatime_h << endl << "locDom->cost: " << locDom->cost << endl;
+    cout << "nr: " << nr << endl << "balance: " << balance << endl;
+    exit(1);
+    }
+    }else{
+    counter++;
+    }
         #if LULESH_SHOW_PROGRESS
           if (myRank == 0) 
         printf("cycle = %d, time = %e, dt=%e\n", its+1, double(locDom->time_h), double(locDom->deltatime_h) ) ;
