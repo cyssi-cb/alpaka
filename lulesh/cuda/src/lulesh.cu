@@ -340,10 +340,7 @@ void AllocateElemPersistent(Domain* domain, size_t domElems, size_t padded_domEl
 {
 
    //domain->matElemlist.resize(domElems) ;  /* material indexset */
-   using std::endl;
-   std::cout<<"bef1"<<endl;
    domain->nodelist.resize(8*padded_domElems) ;   /* elemToNode connectivity */
-   std::cout<<"aft"<<endl;
 
    domain->lxim.resize(domElems) ; /* elem connectivity through face */
    domain->lxip.resize(domElems) ;
@@ -730,16 +727,12 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
   Index_t padded_domElems;
   using std::cout;
   using std::endl;
-  cout<<"in func"<<endl;
   Vector_h<Index_t> nodelist_h;
-  cout<<"after func"<<endl;
   Vector_h<Real_t> x_h;
   Vector_h<Real_t> y_h;
   Vector_h<Real_t> z_h;
-  cout<<"after func"<<endl;
   if (structured)
   {
-    cout<<"inloop"<<endl;
     domain->m_tp       = tp ;
     domain->m_numRanks = numRanks ;
 
@@ -749,23 +742,18 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
 
     Index_t edgeElems = nx ;
     Index_t edgeNodes = edgeElems+1 ;
-    cout<<"inloop"<<endl;
     domain->sizeX = edgeElems ;
     domain->sizeY = edgeElems ;
     domain->sizeZ = edgeElems ;  
 
     domain->numElem = domain->sizeX*domain->sizeY*domain->sizeZ ;
     domain->padded_numElem = PAD(domain->numElem,32);
-    cout<<"inloop"<<endl;
     domain->numNode = (domain->sizeX+1)*(domain->sizeY+1)*(domain->sizeZ+1) ;
     domain->padded_numNode = PAD(domain->numNode,32);
-    cout<<"inloop"<<endl;
     domElems = domain->numElem ;
     domNodes = domain->numNode ;
     padded_domElems = domain->padded_numElem ;
-    cout<<"bef"<<endl;
     AllocateElemPersistent(domain,domElems,padded_domElems);
-    cout<<"aft"<<endl;
     AllocateNodalPersistent(domain,domNodes);
     domain->SetupCommBuffers(edgeNodes);
 
@@ -815,7 +803,6 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
       domain->symmX = symmX_h;
 
     SetupConnectivityBC(domain, edgeElems);
-    cout<<"endfirstloop"<<endl;
 
   }
   else
@@ -1017,7 +1004,6 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
     domain->e.changeValue(domain->octantCorner,1,&arg[0]);
 
   }
-  std::cout<<"hallo"<<std::endl;
   /* set up node-centered indexing of elements */
   Vector_h<Index_t> nodeElemCount_h(domNodes);
 
@@ -1124,12 +1110,10 @@ Domain *NewDomain(char* argv[], Int_t numRanks, Index_t colLoc,
   domain->eosvmin =  Real_t(1.0e-9) ;
 
   domain->refdens =  Real_t(1.0) ;
-  std::cout<<"1124"<<std::endl;
   /* initialize field data */
   Vector_h<Real_t> nodalMass_h(domNodes);
   Vector_h<Real_t> volo_h(domElems);
   Vector_h<Real_t> elemMass_h(domElems);
-std::cout<<"1129"<<std::endl;
   for (Index_t i=0; i<domElems; ++i) {
      Real_t x_local[8], y_local[8], z_local[8] ;
      for( Index_t lnode=0 ; lnode<8 ; ++lnode )
@@ -1149,7 +1133,6 @@ std::cout<<"1129"<<std::endl;
         nodalMass_h[gnode] += volume / Real_t(8.0) ;
      }
   }
-  std::cout<<"1149"<<std::endl;
   domain->nodalMass = nodalMass_h;
   domain->volo = volo_h;
   domain->elemMass= elemMass_h;
@@ -1166,33 +1149,28 @@ std::cout<<"1129"<<std::endl;
   if (domain->m_rowLoc + domain->m_colLoc + domain->m_planeLoc == 0) {
      // Dump into the first zone (which we know is in the corner)
      // of the domain that sits at the origin
-     std::cout<<"1166"<<std::endl;
     #ifdef ALPAKA
     Real_t arg[] = {einit};
     domain->e.changeValue(0,1,&arg[0]);
     #else
     domain->e[0] = einit;
     #endif
-    std::cout<<"1168"<<std::endl;
   }
-  std::cout<<"1169"<<std::endl;
   //set initial deltatime base on analytic CFL calculation
   domain->deltatime_h = (.5*cbrt(domain->volo[0]))/sqrt(2*einit);
-  std::cout<<"1179"<<std::endl;
   domain->cost = cost;
   domain->regNumList.resize(domain->numElem) ;  // material indexset
   domain->regElemlist.resize(domain->numElem) ;  // material indexset
   domain->regCSR.resize(nr);
   domain->regReps.resize(nr);
   domain->regSorted.resize(nr);
-  std::cout<<"1178"<<std::endl;
   // Setup region index sets. For now, these are constant sized
   // throughout the run, but could be changed every cycle to 
   // simulate effects of ALE on the lagrange solver
 
   domain->CreateRegionIndexSets(nr, balance);
     
-    cout << "[DEBUG] Printing domain variables:\n\ndomain->m_tp: " << domain->m_tp << endl << "domain->m_numRanks: " << domain->m_numRanks << endl;
+    /*cout << "[DEBUG] Printing domain variables:\n\ndomain->m_tp: " << domain->m_tp << endl << "domain->m_numRanks: " << domain->m_numRanks << endl;
     cout << "domain->m_colLoc: " << domain->m_colLoc << endl << "domain->m_rowLoc: " << domain->m_rowLoc << endl << "domain->m_planeLoc: " << domain->m_planeLoc << endl;
     cout << "domain->numElem: " << domain->numElem << endl << "domain->padded_numElem: " << domain->padded_numElem << endl << "domain->numNode: " << domain->numNode << endl;
     cout << "domain->padded_numNode: " << domain->padded_numNode << endl << "domain->numSymmX: " << domain->numSymmX << endl << "domain->numSymmY: " << domain->numSymmY << endl;
@@ -1200,7 +1178,7 @@ std::cout<<"1129"<<std::endl;
     cout << "domain->nodalMass[100]: " << domain->nodalMass[100] << endl << "domain->volo[0]: " << domain->volo[100] << endl << "domain->elemMass[0]: " << domain->elemMass[100] << endl;
     cout << "domain->dtcourant_d: " << domain->dtcourant_d[0] << endl;
     cout << "domain->deltatime_h: " << domain->deltatime_h << endl << "domain->cost: " << domain->cost << endl;
-    cout << "nr: " << nr << endl << "balance: " << balance << endl;
+    cout << "nr: " << nr << endl << "balance: " << balance << endl;*/
    // exit(1);
   return domain ;
 }
@@ -1397,11 +1375,9 @@ void TimeIncrement(Domain* domain)
       Real_t gnewdt = Real_t(1.0e+20) ;
       Real_t newdt;
       if ( domain->dtcourant_d[0] < gnewdt) { 
-         printf("domain->dtcourant_d[0] %f\n", domain->dtcourant_d[0]);
          gnewdt = domain->dtcourant_d[0] / Real_t(2.0) ;
       }
       if ( domain->dthydro_d[0] < gnewdt) { 
-      printf("43\n");
          gnewdt = domain->dthydro_d[0] * Real_t(2.0) / Real_t(3.0) ;
       }
 
@@ -1415,22 +1391,18 @@ void TimeIncrement(Domain* domain)
 
       Real_t olddt = domain->deltatime_h;
       ratio = newdt / olddt ;
-      printf("[DEBUUUGGGGG] ratio: %f\n", ratio);
       if (ratio >= Real_t(1.0)) {
          if (ratio < domain->deltatimemultlb) {
-         printf("1\n");
             newdt = olddt ;
          }
          else if (ratio > domain->deltatimemultub) {
             newdt = olddt*domain->deltatimemultub ;
-            printf("2\n");
          }
       }
 
       if (newdt > domain->dtmax) {
          newdt = domain->dtmax ;
       }
-      printf("[DEEEEBBBBUUUUGGGGGG] domain->dtmax %f\nnewdt is %f\nolddt %f\ndomain->deltatimemultub %f\n", domain->dtmax,newdt,olddt,domain->deltatimemultub);
       domain->deltatime_h = newdt ;
    }
 
@@ -1441,7 +1413,6 @@ void TimeIncrement(Domain* domain)
    }
 
    if (targetdt < domain->deltatime_h) {
-   printf("targetdt is %f\n", targetdt);
       domain->deltatime_h = targetdt ;
    }
 
@@ -2637,10 +2608,7 @@ static inline
 void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
 {
     Vector_h h(domain->ss);
-    for(int i=0;i<10;i++){
-      std::cout<<"ss "<<h[i]<<std::endl;
-    };
-    std::cout<<" here"<<std::endl;
+
     Index_t numElem = domain->numElem ;
     Index_t padded_numElem = domain->padded_numElem;
 
@@ -2667,7 +2635,6 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
 
     const bool hourg_gt_zero = hgcoef > Real_t(0.0);
     #ifdef ALPAKA
-      std::cout<<"2673"<< std::endl;
 
       using CalcElemForce = lulesh_port_kernels::CalcVolumeForceForElems_kernel_class;
       CalcElemForce ElemForceKernel(domain->volo.raw(),
@@ -2694,12 +2661,11 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       using Dim2 = alpaka::DimInt<2>;
       using Idx = std::size_t;
       using Vec2 =alpaka::Vec<Dim2, Idx>;
-      std::cout<<"2665"<<std::endl;
+
       alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ElemForceKernel,Vec2{dimGrid,block_size},true);
-            Vector_h h_n(domain->ss);
-    for(int i=0;i<1000;i++){
-    //  std::cout<<"ss "<<h_n[i]<<std::endl;
-    };
+      Vector_h h_n(domain->ss);
+
+    /*cudaDeviceSynchronize();
     std::vector<std::string> vec;
     std::cout<<"volo "<<domain->volo.size()<<std::endl;
     std::cout<<"v "<<domain->v.size()<<std::endl;
@@ -2712,7 +2678,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     read(domain->q,vec);
     read(domain->nodelist,vec);
     read(domain->ss,vec);
-    /*read(domain->elemMass,vec);
+    read(domain->elemMass,vec);
     read(domain->x,vec);
     read(domain->y,vec);
     read(domain->z,vec);
@@ -2725,11 +2691,9 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     //compare(vec);
       //  exit(1);
       //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ElemForceKernel,Vec2{block_size,dimGrid},true);
-      std::cout<<"2667"<<std::endl;
     #else
       if (hourg_gt_zero)
       {
-        std::cout<<"2643"<<std::endl;
         CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size>>>
         ( domain->volo.raw(), 
           domain->v.raw(), 
@@ -2805,14 +2769,12 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
         domain->fz.raw(),
         num_threads
     );
-    std::cout<<"2753"<<std::endl;
             cudaCheckError();
     using Dim2 = alpaka::DimInt<2>;
     using Idx = std::size_t;
     using Vec2 =alpaka::Vec<Dim2, Idx>;
     
     alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(NodeForceKernel,Vec2{block_size,dimGrid},true);
-     std::cout<<"2753"<<std::endl;
     AddNodeForcesFromElems_kernel<<<dimGrid,block_size>>>
     ( domain->numNode,
       domain->padded_numNode,
@@ -2828,7 +2790,6 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       num_threads
     );
     cudaCheckError();
-     std::cout<<"2768"<<std::endl;
 //    cudaDeviceSynchronize();
     #ifndef ALPAKA
       Allocator<Vector_d<Real_t> >::free(fx_elem,padded_numElem*8);
@@ -2847,7 +2808,6 @@ static inline void CalcVolumeForceForElems(Domain* domain)
 
      CalcVolumeForceForElems(hgcoef,domain);
      cudaCheckError();
-     std::cout<<"2796"<<std::endl;
 
      //CalcVolumeForceForElems_warp_per_4cell(hgcoef,domain);
 };
@@ -2877,7 +2837,6 @@ static inline void CalcForceForNodes(Domain *domain)
 
   CalcVolumeForceForElems(domain);
   cudaCheckError();
-  std::cout<<"2825"<<std::endl;
   // moved here from the main loop to allow async execution with GPU work
   TimeIncrement(domain);
 
@@ -2921,7 +2880,6 @@ void CalcAccelerationForNodes(Domain *domain)
     const int dimBlock = 128;
     int dimGrid = PAD_DIV(static_cast<int>(domain->numNode),dimBlock);
     cudaCheckError();
-    std::cout<<"2857"<<std::endl;
 
     #ifdef ALPAKA
     using CalcAccelerationNodes = lulesh_port_kernels::CalcAccelerationForNodes_kernel_class;
@@ -2936,13 +2894,10 @@ void CalcAccelerationForNodes(Domain *domain)
         domain->nodalMass.raw()
     );
     cudaCheckError();
-    std::cout<<"2869"<<std::endl;
     using Dim2 = alpaka::DimInt<2>;
     using Idx = std::size_t;
     using Vec2 =alpaka::Vec<Dim2, Idx>;
-    std::cout<<"2873"<<std::endl;
     alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcAccNodeKernel,Vec2{dimBlock,dimGrid},true);
-    std::cout<<"2875"<<std::endl;
     cudaCheckError();
     #else
     CalcAccelerationForNodes_kernel<<<dimGrid, dimBlock>>>
@@ -2952,9 +2907,6 @@ void CalcAccelerationForNodes(Domain *domain)
          domain->nodalMass.raw());
     #endif
 
-    std::cout<<"2884"<<std::endl;
-    //cudaDeviceSynchronize();
-    //cudaCheckError();
 }
 
 __global__
@@ -2972,7 +2924,6 @@ void ApplyAccelerationBoundaryConditionsForNodes_kernel(
 static inline
 void ApplyAccelerationBoundaryConditionsForNodes(Domain *domain)
 {
-    std::cout<<"2905"<<std::endl;
     Index_t dimBlock = 128;
 
     Index_t dimGrid = PAD_DIV(domain->numSymmX,dimBlock);
@@ -2989,7 +2940,6 @@ void ApplyAccelerationBoundaryConditionsForNodes(Domain *domain)
         using Dim2 = alpaka::DimInt<2>;
         using Idx = std::size_t;
         using Vec2 =alpaka::Vec<Dim2, Idx>;
-        std::cout<<"2921"<<std::endl;
         alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyAccBoundaryKernel,Vec2{dimBlock,dimGrid},false);
         
         #else
@@ -3017,7 +2967,6 @@ void ApplyAccelerationBoundaryConditionsForNodes(Domain *domain)
         using Dim2 = alpaka::DimInt<2>;
         using Idx = std::size_t;
         using Vec2 =alpaka::Vec<Dim2, Idx>;
-        std::cout<<"2944"<<std::endl;
         alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyAccBoundaryKernel,Vec2{dimBlock,dimGrid},true);
     
       #else
@@ -3044,7 +2993,6 @@ void ApplyAccelerationBoundaryConditionsForNodes(Domain *domain)
         using Dim2 = alpaka::DimInt<2>;
         using Idx = std::size_t;
         using Vec2 =alpaka::Vec<Dim2, Idx>;
-        std::cout<<"2969"<<std::endl;
         alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyAccBoundaryKernel,Vec2{dimBlock,dimGrid},true);
     
     
@@ -3059,7 +3007,7 @@ void ApplyAccelerationBoundaryConditionsForNodes(Domain *domain)
       #endif
          
     }
-    std::cout<<"2979"<<std::endl;
+
 }
 
 
@@ -3121,9 +3069,7 @@ void CalcPositionAndVelocityForNodes(const Real_t u_cut, Domain* domain)
       using Dim2 = alpaka::DimInt<2u>;
       using Idx = std::size_t;
       using Vec2 =alpaka::Vec<Dim2, Idx>;
-      std::cout<<"3045"<<std::endl;
       alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcPosAndVeloKernel,Vec2{dimBlock,dimGrid},true);
-      std::cout<<"3047"<<std::endl;
       
     #else
       // CUDA Code
@@ -3165,7 +3111,6 @@ void LagrangeNodal(Domain *domain)
 
   CalcPositionAndVelocityForNodes(u_cut, domain);
   cudaCheckError();
-  std::cout<<"3089"<<std::endl;
 
 #if USE_MPI
 #ifdef SEDOV_SYNC_POS_VEL_EARLY
@@ -3643,12 +3588,10 @@ void CalcKinematicsAndMonotonicQGradient(Domain *domain)
       using Dim2 = alpaka::DimInt<2>;
       using Idx = std::size_t;
       using Vec2 =alpaka::Vec<Dim2, Idx>;
-      std::cout<<"3045"<<std::endl;
       cudaCheckError();
       alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcKinematicsKernelObj,Vec2{dimGrid,block_size},true);
       //alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcKinematicsKernelObj,Vec2{block_size,dimGrid},true);
 
-      std::cout<<"3598"<<std::endl;
             cudaCheckError();
     #else
     CalcKinematicsAndMonotonicQGradient_kernel<<<dimGrid,block_size>>>
@@ -3892,9 +3835,7 @@ void CalcMonotonicQRegionForElems(Domain *domain)
       using Dim2 = alpaka::DimInt<2u>;
       using Idx = std::size_t;
       using Vec2 =alpaka::Vec<Dim2, Idx>;
-      std::cout<<"3844"<<std::endl;
       alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcMonotonicQRegionKernel,Vec2{dimBlock,dimGrid},true);
-      std::cout<<"3846"<<std::endl;
     #else
     CalcMonotonicQRegionForElems_kernel<<<dimGrid,dimBlock>>>
     ( qlc_monoq,qqc_monoq,monoq_limiter_mult,monoq_max_slope,ptiny,elength,
@@ -4297,10 +4238,10 @@ void ApplyMaterialPropertiesAndUpdateVolume(Domain *domain)
       using Dim2 = alpaka::DimInt<2>;
       using Idx = std::size_t;
       using Vec2 =alpaka::Vec<Dim2, Idx>;
-      std::cout<<"4249"<<std::endl;
+
       cudaCheckError();
       alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(ApplyMaterialPropertiesAndUpdateVolumeKernel,Vec2{dimBlock,dimGrid},true);
-      std::cout<<"4253"<<std::endl;
+
             cudaCheckError();
     #else
 
@@ -4612,15 +4553,12 @@ void CalcTimeConstraintsForElems(Domain* domain)
     const int max_dimGrid = 1024;
     const int dimBlock = 128;
     int dimGrid=std::min(max_dimGrid,PAD_DIV(length,dimBlock));
-    std::cout << "domain->numElem is : " << domain->numElem << std::endl;
+
     
     Vector_d<Real_t>* dev_mindtcourant= Allocator<Vector_d<Real_t>>::allocate(dimGrid);
     Vector_d<Real_t>* dev_mindthydro  = Allocator< Vector_d<Real_t> >::allocate(dimGrid);
-    //auto bufDevice = alpaka::allocBuf<Real_t, Idx>(alpaka::ExampleDefaultAcc<alpaka::DimInt<1>, Idx>, dimGrid*sizeof(Real_t));
+    cudaDeviceSynchronize();
     #ifdef ALPAKA
-    for(int i = 0; i<8; i++){
-        printf("BEFORE: dev_mindtcourant[%d] is %f\n", i, dev_mindtcourant[i]);
-    }
     using CalcTimeConstraintsForElems = lulesh_port_kernels::CalcTimeConstraintsForElems_kernel_class<dimBlock>;
       cudaCheckError();
       CalcTimeConstraintsForElems CalcTimeConstraintsKernel(
@@ -4632,16 +4570,13 @@ void CalcTimeConstraintsForElems(Domain* domain)
       using Dim2 = alpaka::DimInt<2>;
       using Idx = std::size_t;
       using Vec2 =alpaka::Vec<Dim2, Idx>;
-      std::cout<<"4581"<<std::endl;
-      cudaCheckError();
-      std::cout<<" CalcTimeConst with "<<dimBlock<<" "<<dimGrid<<std::endl;
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcTimeConstraintsKernel,Vec2{dimGrid,dimBlock},true);
 
-      std::cout<<"4585"<<std::endl;
       cudaCheckError();
-    for(int i = 0; i<8; i++){
-        printf("PAST FIRST KERNEL: dev_mindtcourant[%d] is %f\n", i, dev_mindtcourant[i][0]);
-    } 
+
+      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcTimeConstraintsKernel,Vec2{dimBlock,dimGrid},true);
+
+      cudaCheckError();
+
     // TODO: CalcMinDtOneBlock
     using CalcMinDtOneBlock = lulesh_port_kernels::CalcMinDtOneBlock_class<max_dimGrid>;
       cudaCheckError();
@@ -4656,15 +4591,12 @@ void CalcTimeConstraintsForElems(Domain* domain)
       using Dim2 = alpaka::DimInt<2>;
       using Idx = std::size_t;
       using Vec2 =alpaka::Vec<Dim2, Idx>;
-      std::cout<<"4600"<<std::endl;
+
       cudaCheckError();
-      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcMinDtOneBlockKernel,Vec2{2, max_dimGrid},true); // Should be started with two blocks!
-    for(int i = 0; i<8; i++){
-        printf("AFTER: dev_mindtcourant[%d] is %f\n", i, *dev_mindtcourant->raw());
-    }
-      std::cout<<"4604"<<std::endl;
+      alpaka_utils::alpakaExecuteBaseKernel<Dim2,Idx>(CalcMinDtOneBlockKernel,Vec2{max_dimGrid, 2},true); // Should be started with two blocks!
+
       cudaCheckError();
-    
+
     #else
     cudaFuncSetCacheConfig(CalcTimeConstraintsForElems_kernel<dimBlock>, cudaFuncCachePreferShared);
 
@@ -4678,7 +4610,7 @@ void CalcTimeConstraintsForElems(Domain* domain)
     #endif
     
     //cudaEventRecord(domain->time_constraint_computed,domain->streams[1]);
-std::cout<<"4605"<<std::endl;
+
     Allocator<Vector_d<Real_t> >::free(dev_mindtcourant,dimGrid);
     Allocator<Vector_d<Real_t> >::free(dev_mindthydro,dimGrid);
 }
@@ -5133,7 +5065,7 @@ int main(int argc, char *argv[])
       timeval start;
       gettimeofday(&start, NULL) ;
     #endif
-    std::cout<<"4748"<<std::endl;
+
 
       while(locDom->time_h < locDom->stoptime)
       //while(its<231)
@@ -5145,7 +5077,7 @@ int main(int argc, char *argv[])
     
 
         checkErrors(locDom,its,myRank);
-    static int counter = 1;
+    /*static int counter = 1;
     if(counter == 2){
     {
     using namespace std; 
@@ -5157,11 +5089,11 @@ int main(int argc, char *argv[])
     cout << "locDom->nodalMass[0]: " << locDom->nodalMass[100] << endl << "locDom->volo[0]: " << locDom->volo[100] << endl << "locDom->elemMass[0]: " << locDom->elemMass[100] << endl;
     cout << "locDom->deltatime_h: " << locDom->deltatime_h << endl << "locDom->cost: " << locDom->cost << endl;
     cout << "nr: " << nr << endl << "balance: " << balance << endl;
-    exit(1);
+    //exit(1);
     }
     }else{
     counter++;
-    }
+    }*/
         #if LULESH_SHOW_PROGRESS
           if (myRank == 0) 
         printf("cycle = %d, time = %e, dt=%e\n", its+1, double(locDom->time_h), double(locDom->deltatime_h) ) ;

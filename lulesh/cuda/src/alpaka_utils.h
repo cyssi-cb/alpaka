@@ -16,7 +16,7 @@ namespace alpaka_utils{
         using Acc = alpaka::ExampleDefaultAcc<alpaka::DimInt<1>, Idx>;
         using Vec2_ = alpaka::Vec<alpaka::DimInt<2>, std::size_t>;
         cudaCheckError();
-        std::cout << "Using alpaka accelerator: " << alpaka::getAccName<Acc>() << std::endl;
+        //std::cout << "Using alpaka accelerator: " << alpaka::getAccName<Acc>() << std::endl;
         if(blocking){
             #define Queue_ alpaka::Queue<Acc, alpaka::Blocking>
         }

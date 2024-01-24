@@ -1374,14 +1374,12 @@ class CalcMinDtOneBlock_class{
 
     if (tid == 0){
       for(int ghj = 0; ghj<8; ghj++){
-        printf("dev_mindtcourant[%d] is %f\n", ghj, dev_mindtcourant[ghj]);
       }
     
     }
     alpaka::syncBlockThreads(acc);    
     if (tid < shared_array_size){
       s_data[tid] = dev_mindtcourant[tid];
-      printf("tid %d and dev_mindtcourant %f\n", tid, dev_mindtcourant[tid]);
     }
     else{
       s_data[tid] = 1.0e20;
@@ -1401,7 +1399,6 @@ class CalcMinDtOneBlock_class{
     if (tid<1)
     {
       *(dtcourant)= s_data[0];
-      printf("s_data is %f\n", s_data[0]);
     }
 
   }
@@ -1472,7 +1469,8 @@ class CalcTimeConstraintsForElems_kernel_class{
         
         Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
         Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
-        //printf("Thread Extent:%d, %d",globalThreadExtent[0u],globalThreadIdx[0u]);
+        //printf("Thread Extent:%d, %d\n",globalThreadExtent[0u],globalThreadIdx[0u]);
+        Index_t thread_total = globalThreadExtent[0u];
         Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
         int i=static_cast<int>(linearizedGlobalThreadIdx[0u]);
         int tid = i%block_size;
@@ -1514,7 +1512,7 @@ class CalcTimeConstraintsForElems_kernel_class{
       dtf += ((vdov_tmp < 0.) ? qqc2*area_tmp*area_tmp*vdov_tmp*vdov_tmp : 0.);
           //printf("DTF IS %f and sqrt(dtf) is %.24lf and area_tmp is %f\n", dtf, sqrt(dtf), area_tmp);
       dtf = area_tmp / sqrt(dtf) ;
- printf("DTF IS %f and area is %f \n", dtf, area_tmp);
+ //printf("DTF IS %f and area is %f \n", dtf, area_tmp);
       /* determine minimum timestep with its corresponding elem */
       if (vdov_tmp != Real_t(0.) && dtf < dtcourant) {
         dtcourant = dtf ;
@@ -1522,25 +1520,17 @@ class CalcTimeConstraintsForElems_kernel_class{
 
       if (dtcourant< mindtcourant)
         mindtcourant= dtcourant;
-
-      i += globalThreadExtent[0u];
+        
+      //printf("i is %d and ThreadExtend %d\n", i, thread_total);
+      //i += globalThreadExtent[0u];
+      i += thread_total;
     }
 
     s_mindthydro[tid]   = mindthydro;
     s_mindtcourant[tid] = mindtcourant;
 
     alpaka::syncBlockThreads(acc);
-    
-    // TODO: FIX THIS!! Apparently there are 0s in mindtcourant which will propagate through the min() into dev_mindtcourant
-    if (tid==0) {
-        for(int i = 0; i<block_size;i++){
-            printf("s_mindtcourant[i] is %f\n", s_mindtcourant[i]);
-            if( s_mindtcourant[i] == 0){
-                s_mindtcourant[i] =  Real_t(1.0e+20);
-            }
-        }
-    }
-     alpaka::syncBlockThreads(acc);
+
 
     // Do shared memory reduction
     if (block_size >= 1024) { 
@@ -1595,9 +1585,8 @@ class CalcTimeConstraintsForElems_kernel_class{
 
     // Store in global memory
     if (tid==0) {
-      dev_mindtcourant[static_cast<Index_t>(((i+block_size)/block_size)-1)] = s_mindtcourant[0];
-      printf("WRITING %f TO DEV_MINDTCOURANT\n", s_mindtcourant[0]);
-      dev_mindthydro[static_cast<Index_t>(((i+block_size)/block_size)-1)] = s_mindthydro[0];
+      dev_mindtcourant[static_cast<Index_t>((((i%thread_total)+block_size)/block_size)-1)] = s_mindtcourant[0];
+      dev_mindthydro[static_cast<Index_t>((((i%thread_total)+block_size)/block_size)-1)] = s_mindthydro[0];
     }
     };
 };

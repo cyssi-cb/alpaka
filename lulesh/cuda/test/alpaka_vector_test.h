@@ -97,17 +97,17 @@ namespace test{
     };
     int copy_to_device_and_back(){
         try{
-            cout<<"0\n"<<endl;
+
             Vector_d<Real_t> deviceVec(numElems,.0);
-            cout<<"before_creating_hostvec\n"<<endl;
+
             Vector_h<Real_t> hostVec(numElems,1.1);
-            cout<<"2\n"<<endl;
+
             deviceVec=hostVec;//copy to device
-            cout<<"3\n"<<endl;
+
             Vector_h<Real_t> test(numElems,.0);
-            cout<<"4\n"<<endl;
+
             test=deviceVec;//copy from device
-            cout<<"5\n"<<endl;
+
             for(Idx i(0);i<numElems;i++)if(test[i]!=1.1){
                 cout<<"wrong result when trying to copy from and back to device "<<test[i]<<endl;
                 return failure;
@@ -138,7 +138,7 @@ namespace test{
         tests_host(failed);
         tests_device(failed);
         if(!failed){
-            cout<<"passed All tests"<<endl;
+            //cout<<"passed All tests"<<endl;
             return success;
         }
         else {
