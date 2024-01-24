@@ -2551,9 +2551,9 @@ static inline void CalcVolumeForceForElems(const Real_t hgcoef,
   using Vec2 = alpaka::Vec<Dim2, Idx>;
 
   alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
-      ElemForceKernel, Vec2{dimGrid, block_size}, true);
-  cudaDeviceSynchronize();
-  Vector_h h_n(domain->ss);
+      ElemForceKernel, Vec2{block_size,dimGrid}, true);
+  //cudaDeviceSynchronize();
+  //Vector_h h_n(domain->ss);
 
 #else
   if (hourg_gt_zero) {
@@ -2599,15 +2599,15 @@ static inline void CalcVolumeForceForElems(const Real_t hgcoef,
       domain->nodeElemStart.raw(), domain->nodeElemCornerList.raw(),
       fx_elem.raw(), fy_elem.raw(), fz_elem.raw(), domain->fx.raw(),
       domain->fy.raw(), domain->fz.raw(), num_threads);
-  cudaCheckError();
+  //cudaCheckError();
   using Dim2 = alpaka::DimInt<2>;
   using Idx = std::size_t;
   using Vec2 = alpaka::Vec<Dim2, Idx>;
 
   alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
       NodeForceKernel, Vec2{block_size, dimGrid}, true);
-  cudaCheckError();
-  cudaDeviceSynchronize();
+  //cudaCheckError();
+  //cudaDeviceSynchronize();
 
 #else
 
@@ -2631,7 +2631,7 @@ static inline void CalcVolumeForceForElems(Domain *domain) {
   const Real_t hgcoef = domain->hgcoef;
 
   CalcVolumeForceForElems(hgcoef, domain);
-  cudaCheckError();
+  //cudaCheckError();
 
   // CalcVolumeForceForElems_warp_per_4cell(hgcoef,domain);
 };
@@ -2657,7 +2657,7 @@ static inline void CalcForceForNodes(Domain *domain) {
 #endif
 
   CalcVolumeForceForElems(domain);
-  cudaCheckError();
+  //cudaCheckError();
   // moved here from the main loop to allow async execution with GPU work
   TimeIncrement(domain);
 
@@ -2695,7 +2695,7 @@ __global__ void CalcAccelerationForNodes_kernel(int numNode, Real_t *xdd,
 static inline void CalcAccelerationForNodes(Domain *domain) {
   const int dimBlock = 128;
   int dimGrid = PAD_DIV(static_cast<int>(domain->numNode), dimBlock);
-  cudaCheckError();
+  //cudaCheckError();
 
 #ifdef ALPAKA
   using CalcAccelerationNodes =
@@ -2704,14 +2704,14 @@ static inline void CalcAccelerationForNodes(Domain *domain) {
       domain->numNode, domain->xdd.raw(), domain->ydd.raw(), domain->zdd.raw(),
       domain->fx.raw(), domain->fy.raw(), domain->fz.raw(),
       domain->nodalMass.raw());
-  cudaCheckError();
+  //cudaCheckError();
   using Dim2 = alpaka::DimInt<2>;
   using Idx = std::size_t;
   using Vec2 = alpaka::Vec<Dim2, Idx>;
   alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
       CalcAccNodeKernel, Vec2{dimBlock, dimGrid}, true);
-  cudaCheckError();
-  cudaDeviceSynchronize();
+  //cudaCheckError();
+  //cudaDeviceSynchronize();
 #else
   CalcAccelerationForNodes_kernel<<<dimGrid, dimBlock>>>(
       domain->numNode, domain->xdd.raw(), domain->ydd.raw(), domain->zdd.raw(),
@@ -2746,7 +2746,7 @@ static inline void ApplyAccelerationBoundaryConditionsForNodes(Domain *domain) {
     using Vec2 = alpaka::Vec<Dim2, Idx>;
     alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
         ApplyAccBoundaryKernel, Vec2{dimBlock, dimGrid}, false);
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
 #else
     // CUDA Code
     ApplyAccelerationBoundaryConditionsForNodes_kernel<<<dimGrid, dimBlock>>>(
@@ -2768,7 +2768,7 @@ static inline void ApplyAccelerationBoundaryConditionsForNodes(Domain *domain) {
     using Vec2 = alpaka::Vec<Dim2, Idx>;
     alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
         ApplyAccBoundaryKernel, Vec2{dimBlock, dimGrid}, true);
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
 #else
     // CUDA Code
     ApplyAccelerationBoundaryConditionsForNodes_kernel<<<dimGrid, dimBlock>>>(
@@ -2791,7 +2791,7 @@ static inline void ApplyAccelerationBoundaryConditionsForNodes(Domain *domain) {
     alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
         ApplyAccBoundaryKernel, Vec2{dimBlock, dimGrid}, true);
 
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
 
 // CUDA Code
 #else
@@ -2852,7 +2852,7 @@ static inline void CalcPositionAndVelocityForNodes(const Real_t u_cut,
   using Vec2 = alpaka::Vec<Dim2, Idx>;
   alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
       CalcPosAndVeloKernel, Vec2{dimBlock, dimGrid}, true);
-  cudaDeviceSynchronize();
+  //cudaDeviceSynchronize();
 #else
   // CUDA Code
   CalcPositionAndVelocityForNodes_kernel<<<dimGrid, dimBlock>>>(
@@ -2889,7 +2889,7 @@ static inline void LagrangeNodal(Domain *domain) {
   ApplyAccelerationBoundaryConditionsForNodes(domain);
 
   CalcPositionAndVelocityForNodes(u_cut, domain);
-  cudaCheckError();
+  //cudaCheckError();
 
 #if USE_MPI
 #ifdef SEDOV_SYNC_POS_VEL_EARLY
@@ -3289,7 +3289,7 @@ static inline void CalcKinematicsAndMonotonicQGradient(Domain *domain) {
 #ifdef ALPAKA
   using CalcKinematicsAndMonotonicQGradient =
       lulesh_port_kernels::CalcKinematicsAndMonotonicQGradient_kernel_class;
-  cudaCheckError();
+  //cudaCheckError();
   CalcKinematicsAndMonotonicQGradient CalcKinematicsKernelObj(
       numElem, padded_numElem, domain->deltatime_h, domain->nodelist.raw(),
       domain->volo.raw(), domain->v.raw(), domain->x.raw(), domain->y.raw(),
@@ -3303,11 +3303,11 @@ static inline void CalcKinematicsAndMonotonicQGradient(Domain *domain) {
   using Dim2 = alpaka::DimInt<2>;
   using Idx = std::size_t;
   using Vec2 = alpaka::Vec<Dim2, Idx>;
-  cudaCheckError();
+  //cudaCheckError();
   alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
-      CalcKinematicsKernelObj, Vec2{dimGrid, block_size}, true);
-  cudaDeviceSynchronize();
-  cudaCheckError();
+      CalcKinematicsKernelObj, Vec2{block_size,dimGrid}, true);
+  //cudaDeviceSynchronize();
+  //cudaCheckError();
 #else
   CalcKinematicsAndMonotonicQGradient_kernel<<<dimGrid, block_size>>>(
       numElem, padded_numElem, domain->deltatime_h, domain->nodelist.raw(),
@@ -3582,8 +3582,8 @@ static inline void CalcMonotonicQRegionForElems(Domain *domain) {
       domain->qq.raw(), domain->ql.raw(), domain->q.raw(), domain->qstop,
       domain->bad_q_h);
 #endif
-  cudaDeviceSynchronize();
-  cudaCheckError();
+  //cudaDeviceSynchronize();
+  //cudaCheckError();
 }
 
 static __device__ __forceinline__ void
@@ -3872,7 +3872,7 @@ static inline void ApplyMaterialPropertiesAndUpdateVolume(Domain *domain) {
 #ifdef ALPAKA
     using ApplyMaterialPropertiesAndUpdateVolume = lulesh_port_kernels::
         ApplyMaterialPropertiesAndUpdateVolume_kernel_class;
-    cudaCheckError();
+    //cudaCheckError();
     ApplyMaterialPropertiesAndUpdateVolume
         ApplyMaterialPropertiesAndUpdateVolumeKernel(
             length, domain->refdens, domain->e_cut, domain->emin,
@@ -3888,7 +3888,7 @@ static inline void ApplyMaterialPropertiesAndUpdateVolume(Domain *domain) {
     using Idx = std::size_t;
     using Vec2 = alpaka::Vec<Dim2, Idx>;
 
-    cudaCheckError();
+    //cudaCheckError();
     alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
         ApplyMaterialPropertiesAndUpdateVolumeKernel, Vec2{dimBlock, dimGrid},
         true);
@@ -3904,8 +3904,8 @@ static inline void ApplyMaterialPropertiesAndUpdateVolume(Domain *domain) {
         domain->v_cut, domain->bad_vol_h, domain->cost, domain->regCSR.raw(),
         domain->regReps.raw(), domain->numReg);
 #endif
-    cudaDeviceSynchronize();
-    cudaCheckError();
+    //cudaDeviceSynchronize();
+    //cudaCheckError();
   }
 }
 
@@ -4242,11 +4242,11 @@ static inline void CalcTimeConstraintsForElems(Domain *domain) {
       Allocator<Vector_d<Real_t>>::allocate(dimGrid);
   Vector_d<Real_t> *dev_mindthydro =
       Allocator<Vector_d<Real_t>>::allocate(dimGrid);
-  cudaDeviceSynchronize();
+  //cudaDeviceSynchronize();
 #ifdef ALPAKA
   using CalcTimeConstraintsForElems =
       lulesh_port_kernels::CalcTimeConstraintsForElems_kernel_class<dimBlock>;
-  cudaCheckError();
+  //cudaCheckError();
   CalcTimeConstraintsForElems CalcTimeConstraintsKernel(
       length, qqc2, dvovmax, domain->matElemlist.raw(), domain->ss.raw(),
       domain->vdov.raw(), domain->arealg.raw(), dev_mindtcourant->raw(),
@@ -4259,13 +4259,13 @@ static inline void CalcTimeConstraintsForElems(Domain *domain) {
   alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
       CalcTimeConstraintsKernel, Vec2{dimBlock, dimGrid}, true);
 
-  cudaDeviceSynchronize();
-  cudaCheckError();
+  //cudaDeviceSynchronize();
+  //cudaCheckError();
 
   // TODO: CalcMinDtOneBlock
   using CalcMinDtOneBlock =
       lulesh_port_kernels::CalcMinDtOneBlock_class<max_dimGrid>;
-  cudaCheckError();
+  //cudaCheckError();
   CalcMinDtOneBlock CalcMinDtOneBlockKernel(
       dev_mindthydro->raw(), dev_mindtcourant->raw(), domain->dtcourant_d.raw(),
       domain->dthydro_d.raw(), dimGrid);
@@ -4278,8 +4278,8 @@ static inline void CalcTimeConstraintsForElems(Domain *domain) {
       CalcMinDtOneBlockKernel, Vec2{max_dimGrid, 2},
       true); // Should be started with two blocks!
 
-  cudaDeviceSynchronize();
-  cudaCheckError();
+  //cudaDeviceSynchronize();
+  //cudaCheckError();
 
 #else
   cudaFuncSetCacheConfig(CalcTimeConstraintsForElems_kernel<dimBlock>,
@@ -4721,7 +4721,7 @@ int main(int argc, char *argv[]) {
       break;
   }
   // make sure GPU finished its work
-  cudaDeviceSynchronize();
+  //cudaDeviceSynchronize();
   // Use reduced max elapsed time
   double elapsed_time;
 #if USE_MPI
