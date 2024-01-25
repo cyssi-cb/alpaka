@@ -4604,6 +4604,7 @@ void VerifyAndWriteFinalOutput(Real_t elapsed_time, Domain &locDom, Int_t its,
 }
 
 int main(int argc, char *argv[]) {
+
   if (argc < 3) {
     printUsage(argv);
     exit(LFileError);
