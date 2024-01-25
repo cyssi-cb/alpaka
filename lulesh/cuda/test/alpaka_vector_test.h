@@ -105,8 +105,9 @@ namespace test{
             deviceVec=hostVec;//copy to device
 
             Vector_h<Real_t> test(numElems,.0);
+            test.copyfromdev(deviceVec,"test");
 
-            test=deviceVec;//copy from device
+            //test=deviceVec;//copy from device
 
             for(Idx i(0);i<numElems;i++)if(test[i]!=1.1){
                 cout<<"wrong result when trying to copy from and back to device "<<test[i]<<endl;

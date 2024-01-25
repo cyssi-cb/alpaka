@@ -683,7 +683,7 @@ ALPAKA_FN_ACC static auto inline CalcElemShapeFunctionDerivatives(
 
 ALPAKA_FN_ACC void inline ApplyMaterialPropertiesForElems_device(
     Real_t eosvmin, Real_t eosvmax, Real_t *vnew, Real_t *v, Real_t &vnewc,
-    Index_t *bad_vol, Index_t zn) {
+    Real_t *constraints, Index_t zn) {
   vnewc = vnew[zn];
 
   if (eosvmin != Real_t(0.)) {
@@ -707,7 +707,7 @@ ALPAKA_FN_ACC void inline ApplyMaterialPropertiesForElems_device(
       vc = eosvmax;
   }
   if (vc <= 0.) {
-    *bad_vol = zn;
+    constraints[2] = zn;
   }
 }
 
@@ -1018,7 +1018,7 @@ class CalcMonotonicQRegionForElems_kernel_class {
   Real_t *ql;
   Real_t *q;
   Real_t qstop;
-  Index_t *bad_q;
+  Real_t *constraints;
 
 public:
   CalcMonotonicQRegionForElems_kernel_class(
@@ -1035,7 +1035,7 @@ public:
       Real_t *delv_eta, Real_t *delv_zeta, Real_t *delx_xi, Real_t *delx_eta,
       Real_t *delx_zeta, Real_t *vdov, Real_t *elemMass, Real_t *volo,
       Real_t *vnew, Real_t *qq, Real_t *ql, Real_t *q, Real_t qstop,
-      Index_t *bad_q) {
+      Real_t *constraints) {
     this->qlc_monoq = qlc_monoq;
     this->qqc_monoq = qqc_monoq;
     this->monoq_limiter_mult = monoq_limiter_mult;
@@ -1066,7 +1066,7 @@ public:
     this->qq = qq;
     this->ql = ql, this->q = q;
     this->qstop = qstop;
-    this->bad_q = bad_q;
+    this->constraints = constraints;
   };
   template <typename TAcc>
   ALPAKA_FN_ACC auto operator()(TAcc const &acc) const -> void {
@@ -1272,7 +1272,7 @@ public:
 
       // Don't allow excessive artificial viscosity
       if (q[i] > qstop)
-        *(bad_q) = i;
+        constraints[3] = (Real_t)i;
     }
   };
 };
@@ -1281,16 +1281,15 @@ template <int block_size> class CalcMinDtOneBlock_class {
 
   Real_t *dev_mindthydro;
   Real_t *dev_mindtcourant;
-  Real_t *dtcourant;
-  Real_t *dthydro;
+  Real_t *constraints;
   Index_t shared_array_size;
 
 public:
   CalcMinDtOneBlock_class(Real_t *dev_mindthydro, Real_t *dev_mindtcourant,
-                          Real_t *dtcourant, Real_t *dthydro,
+                          Real_t *constraints,
                           Index_t shared_array_size)
       : dev_mindthydro(dev_mindthydro), dev_mindtcourant(dev_mindtcourant),
-        dtcourant(dtcourant), dthydro(dthydro),
+        constraints(constraints),
         shared_array_size(shared_array_size){};
 
   template <typename TAcc>
@@ -1363,7 +1362,7 @@ public:
         s_data[tid] = min(s_data[tid], s_data[tid + 1]);
       }
       if (tid < 1) {
-        *(dtcourant) = s_data[0];
+        constraints[0] = s_data[0];
       }
 
     } else if (tid > block_size) {
@@ -1417,7 +1416,7 @@ public:
         s_data[tid] = min(s_data[tid], s_data[tid + 1]);
       }
       if (tid < 1) {
-        *(dthydro) = s_data[0];
+        constraints[1] = s_data[0];
       }
     }
   };
@@ -1616,7 +1615,7 @@ class ApplyMaterialPropertiesAndUpdateVolume_kernel_class {
   Real_t ss4o3;
   Real_t *__restrict__ ss;
   Real_t v_cut;
-  Index_t *__restrict__ bad_vol;
+  Real_t *__restrict__ constraints;
   const Int_t cost;
   const Index_t *regCSR;
   const Index_t *regReps;
@@ -1632,7 +1631,7 @@ public:
       //        const Index_t* __restrict__ regElemlist,
       Real_t *__restrict__ e, Real_t *__restrict__ delv, Real_t *__restrict__ p,
       Real_t *__restrict__ q, Real_t ss4o3, Real_t *__restrict__ ss,
-      Real_t v_cut, Index_t *__restrict__ bad_vol, const Int_t cost,
+      Real_t v_cut, Real_t *__restrict__ constraints, const Int_t cost,
       const Index_t *regCSR, const Index_t *regReps, const Index_t numReg
 
       )
@@ -1658,7 +1657,7 @@ public:
     this->ss4o3 = ss4o3;
     this->ss = ss;
     this->v_cut = v_cut;
-    this->bad_vol = bad_vol;
+    this->constraints = constraints;
     // this->cost=cost;
     this->regCSR = regCSR;
     this->regReps = regReps;
@@ -1691,7 +1690,7 @@ public:
       Index_t zidx = regElemlist[i];
 
       lulesh_port_kernels::ApplyMaterialPropertiesForElems_device(
-          eosvmin, eosvmax, vnew, v, vnewc, bad_vol, zidx);
+          eosvmin, eosvmax, vnew, v, vnewc, constraints, zidx);
       /********************** Start EvalEOSForElems **************************/
       // Here we need to find out what region this element belongs to and what
       // is the rep value!
@@ -1999,7 +1998,7 @@ class CalcVolumeForceForElems_kernel_class {
   Real_t *ss, *x, *y, *z, *xd, *yd, *zd, *fx_elem, *fy_elem, *fz_elem;
 
   Real_t coefficient;
-  Index_t *__restrict__ bad_vol;
+  Real_t *__restrict__ constraints;//bad vol index 2
   Index_t num_threads;
   bool hour_gt_zero;
 
@@ -2015,11 +2014,11 @@ public:
       // TextureObj<Real_t>* x,  TextureObj<Real_t>* y,  TextureObj<Real_t>* z,
       // TextureObj<Real_t>* xd,  TextureObj<Real_t>* yd,  TextureObj<Real_t>*
       // zd,
-      Real_t *fx_elem, Real_t *fy_elem, Real_t *fz_elem, Index_t *bad_vol,
+      Real_t *fx_elem, Real_t *fy_elem, Real_t *fz_elem, Real_t *constraints,
       const Index_t num_threads, bool hour_gt_zero)
       : volo(volo), ss(ss), x(x), y(y), z(z), xd(xd), yd(yd), zd(zd),
         fx_elem(fx_elem), fy_elem(fy_elem), fz_elem(fz_elem),
-        coefficient(coefficient), bad_vol(bad_vol), num_threads(num_threads),
+        coefficient(coefficient), constraints(constraints), num_threads(num_threads),
         hour_gt_zero(hour_gt_zero), v(v), p(p), q(q), nodelist(nodelist),
         padded_numElem(padded_numElem), hourg(hourg), numElem(numElem) {
     this->elemMass = elemMass;
@@ -2053,7 +2052,7 @@ public:
       Real_t det = volo[elem] * volume;
       // Check for bad volume
       if (volume < 0.) {
-        *bad_vol = elem;
+        constraints[2] = elem;
       }
 
       Real_t ss1 = ss[elem];
@@ -2101,7 +2100,7 @@ public:
 
       // Check for bad volume
       if (det < 0.) {
-        *bad_vol = elem;
+        constraints[2] = elem;
       }
 
       for (int i = 0; i < 8; i++) {
@@ -2175,7 +2174,7 @@ class CalcKinematicsAndMonotonicQGradient_kernel_class {
   Real_t *__restrict__ delv_xi;
   Real_t *__restrict__ delx_eta;
   Real_t *__restrict__ delv_eta;
-  Index_t *__restrict__ bad_vol;
+  Real_t *__restrict__ constraints;
   const Index_t num_threads;
 
 public:
@@ -2193,13 +2192,13 @@ public:
       Real_t *__restrict__ delx_zeta, Real_t *__restrict__ delv_zeta,
       Real_t *__restrict__ delx_xi, Real_t *__restrict__ delv_xi,
       Real_t *__restrict__ delx_eta, Real_t *__restrict__ delv_eta,
-      Index_t *__restrict__ bad_vol, const Index_t num_threads)
+      Real_t *__restrict__ constraints, const Index_t num_threads)
       : numElem(numElem), padded_numElem(padded_numElem), dt(dt),
         nodelist(nodelist), volo(volo), v(v), x(x), y(y), z(z), xd(xd), yd(yd),
         zd(zd), vnew(vnew), delv(delv), arealg(arealg), dxx(dxx), dyy(dyy),
         dzz(dzz), vdov(vdov), delx_zeta(delx_zeta), delv_zeta(delv_zeta),
         delx_xi(delx_xi), delv_xi(delv_xi), delx_eta(delx_eta),
-        delv_eta(delv_eta), bad_vol(bad_vol), num_threads(num_threads){};
+        delv_eta(delv_eta), constraints(constraints), num_threads(num_threads){};
   template <typename TAcc>
   ALPAKA_FN_ACC auto operator()(TAcc const &acc) const -> void {
     Real_t B[3][8]; /** shape function derivatives */
@@ -2322,7 +2321,7 @@ public:
 
       // Check for bad volume
       if (relativeVolume < 0)
-        *bad_vol = k;
+        constraints[2] = (Real_t)k;
     }
 
   } // end function

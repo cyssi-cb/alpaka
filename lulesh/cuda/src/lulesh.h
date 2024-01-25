@@ -166,16 +166,17 @@ public:
   Real_t deltatimemultub;
   Real_t stoptime; /* end time for simulation */
   Real_t dtmax;    /* maximum allowable time increment */
-  Int_t cycle;     /* iteration count for simulation */
-
+  Int_t cycle;     /* iteration count for simulation */ 
+  Vector_d<Real_t> constraints_d;//0 : dthydro_d, 1: dtcourant_d, 2: bad_q_d, 3: bad_vol_d
+  Vector_h<Real_t> constraints_h;//0 : dthydro_d, 1: dtcourant_d, 2: bad_q_d, 3: bad_vol_d
   /* hydro time constraint */
-  Vector_d<Real_t> dthydro_d;
+  //Vector_d<Real_t> dthydro_d;
   /* courant time constraint */
-  Vector_d<Real_t> dtcourant_d;
+  //Vector_d<Real_t> dtcourant_d;
 
-  Vector_d<Index_t> bad_q_d; /* flag to indicate Q error */
+  //Vector_d<Index_t> bad_q_d; /* flag to indicate Q error */
                              /* flag to indicate volume error */
-  Vector_d<Index_t> bad_vol_d;
+  //Vector_d<Index_t> bad_vol_d;
   /* cuda Events to indicate completion of certain kernels */
   cudaEvent_t time_constraint_computed;
 

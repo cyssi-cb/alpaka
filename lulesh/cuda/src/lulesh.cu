@@ -999,14 +999,15 @@ Domain *NewDomain(char *argv[], Int_t numRanks, Index_t colLoc, Index_t rowLoc,
     matElemlist_h[i] = i;
   }
   domain->matElemlist = matElemlist_h;
-  Vector_h<Real_t> dtcourant(1, 1e20);
-  Vector_h<Real_t> dthydro(1, 1e20);
-  Vector_h<Index_t> bad_vol(1, -1);
-  Vector_h<Index_t> bad_q(1, -1);
-  domain->dtcourant_d = dtcourant;
+  Vector_h<Real_t> constraints_h(4, 1e20);
+  constraints_h[2]=-1.0;
+  constraints_h[3]=-1.0;
+  domain->constraints_h=constraints_h;
+  domain->constraints_d=constraints_h;
+  /*domain->dtcourant_d = dtcourant;
   domain->dthydro_d = dthydro;
   domain->bad_vol_d = bad_vol;
-  domain->bad_q_d = bad_q;
+  domain->bad_q_d = bad_q;*/
   /* cudaMallocHost(&domain->dtcourant_h,sizeof(Real_t),0);
   cudaMallocHost(&domain->dthydro_h,sizeof(Real_t),0);
   cudaMallocHost(&domain->bad_vol_h,sizeof(Index_t),0);//check
@@ -1091,7 +1092,7 @@ Domain *NewDomain(char *argv[], Int_t numRanks, Index_t colLoc, Index_t rowLoc,
 #endif
   }
   // set initial deltatime base on analytic CFL calculation
-  domain->deltatime_h = (.5 * cbrt(domain->volo[0])) / sqrt(2 * einit);
+  domain->deltatime_h = (.5 * cbrt(domain->volo.accessIndex(0,"from accessing domain->volo"))) / sqrt(2 * einit);
   domain->cost = cost;
   domain->regNumList.resize(domain->numElem);  // material indexset
   domain->regElemlist.resize(domain->numElem); // material indexset
@@ -1305,7 +1306,7 @@ static inline void TimeIncrement(Domain *domain) {
 
   // To make sure dtcourant and dthydro have been updated on host
   Real_t targetdt = domain->stoptime - domain->time_h;
-
+  domain->constraints_h.copyfromdev(domain->constraints_d," copy constraint values from device"); //copy all constraint values from device
   if ((domain->dtfixed <= Real_t(0.0)) && (domain->cycle != Int_t(0))) {
 
     Real_t ratio;
@@ -1313,11 +1314,13 @@ static inline void TimeIncrement(Domain *domain) {
     /* This will require a reduction in parallel */
     Real_t gnewdt = Real_t(1.0e+20);
     Real_t newdt;
-    if (domain->dtcourant_d[0] < gnewdt) {
-      gnewdt = domain->dtcourant_d[0] / Real_t(2.0);
+    Real_t dtcourant_d_val=domain->constraints_h[0];
+    Real_t dthydro_d_val=domain->constraints_h[1];
+    if (dtcourant_d_val < gnewdt) {
+      gnewdt = dtcourant_d_val / Real_t(2.0);
     }
-    if (domain->dthydro_d[0] < gnewdt) {
-      gnewdt = domain->dthydro_d[0] * Real_t(2.0) / Real_t(3.0);
+    if (dthydro_d_val < gnewdt) {
+      gnewdt = dthydro_d_val * Real_t(2.0) / Real_t(3.0);
     }
 
 #if USE_MPI
@@ -2504,7 +2507,6 @@ __global__ void CalcVolumeForceForElems_kernel_warp_per_4cell(
 
 static inline void CalcVolumeForceForElems(const Real_t hgcoef,
                                            Domain *domain) {
-  Vector_h h(domain->ss);
 
   Index_t numElem = domain->numElem;
   Index_t padded_numElem = domain->padded_numElem;
@@ -2543,7 +2545,7 @@ static inline void CalcVolumeForceForElems(const Real_t hgcoef,
       hgcoef, numElem, padded_numElem, domain->nodelist.raw(), domain->ss.raw(),
       domain->elemMass.raw(), domain->x.raw(), domain->y.raw(), domain->z.raw(),
       domain->xd.raw(), domain->yd.raw(), domain->zd.raw(), fx_elem.raw(),
-      fy_elem.raw(), fz_elem.raw(), domain->bad_vol_d.raw(), num_threads,
+      fy_elem.raw(), fz_elem.raw(), domain->constraints_d.raw(), num_threads,
       hourg_gt_zero);
 
   using Dim2 = alpaka::DimInt<2>;
@@ -2637,15 +2639,17 @@ static inline void CalcVolumeForceForElems(Domain *domain) {
 };
 
 static inline void checkErrors(Domain *domain, int its, int myRank) {
-  if (domain->bad_q_d[0] != -1) {
+  auto bad_vol=domain->constraints_h[2];
+  auto bad_q=domain->constraints_h[3];
+  if (bad_vol != -1) {
     printf("Rank %i: Volume Error in cell %d at iteration %d\n", myRank,
-           domain->bad_vol_d[0], its);
+           bad_vol, its);
     exit(VolumeError);
   }
 
-  if (domain->bad_q_d[0] != -1) {
+  if (bad_q != -1) {
     printf("Rank %i: Q Error in cell %d at iteration %d\n", myRank,
-           domain->bad_q_d[0], its);
+           bad_q, its);
     exit(QStopError);
   }
 }
@@ -3298,7 +3302,7 @@ static inline void CalcKinematicsAndMonotonicQGradient(Domain *domain) {
       domain->dxx->raw(), domain->dyy->raw(), domain->dzz->raw(),
       domain->vdov.raw(), domain->delx_zeta->raw(), domain->delv_zeta->raw(),
       domain->delx_xi->raw(), domain->delv_xi->raw(), domain->delx_eta->raw(),
-      domain->delv_eta->raw(), domain->bad_vol_d.raw(), num_threads);
+      domain->delv_eta->raw(), domain->constraints_d.raw(), num_threads);
 
   using Dim2 = alpaka::DimInt<2>;
   using Idx = std::size_t;
@@ -3563,7 +3567,7 @@ static inline void CalcMonotonicQRegionForElems(Domain *domain) {
       domain->delx_eta->raw(), domain->delx_zeta->raw(), domain->vdov.raw(),
       domain->elemMass.raw(), domain->volo.raw(), domain->vnew->raw(),
       domain->qq.raw(), domain->ql.raw(), domain->q.raw(), domain->qstop,
-      domain->bad_q_d.raw());
+      domain->constraints_d.raw());
 
   using Dim2 = alpaka::DimInt<2u>;
   using Idx = std::size_t;
@@ -3881,7 +3885,7 @@ static inline void ApplyMaterialPropertiesAndUpdateVolume(Domain *domain) {
             domain->eosvmin, domain->eosvmax, domain->regElemlist.raw(),
             domain->e.raw(), domain->delv.raw(), domain->p.raw(),
             domain->q.raw(), domain->ss4o3, domain->ss.raw(), domain->v_cut,
-            domain->bad_vol_d.raw(), domain->cost, domain->regCSR.raw(),
+            domain->constraints_d.raw(), domain->cost, domain->regCSR.raw(),
             domain->regReps.raw(), domain->numReg);
 
     using Dim2 = alpaka::DimInt<2>;
@@ -4267,8 +4271,7 @@ static inline void CalcTimeConstraintsForElems(Domain *domain) {
       lulesh_port_kernels::CalcMinDtOneBlock_class<max_dimGrid>;
   //cudaCheckError();
   CalcMinDtOneBlock CalcMinDtOneBlockKernel(
-      dev_mindthydro->raw(), dev_mindtcourant->raw(), domain->dtcourant_d.raw(),
-      domain->dthydro_d.raw(), dimGrid);
+      dev_mindthydro->raw(), dev_mindtcourant->raw(), domain->constraints_d.raw(), dimGrid);
 
   using Dim2 = alpaka::DimInt<2>;
   using Idx = std::size_t;
@@ -4445,6 +4448,7 @@ void DumpDomain(Domain *domain) {
 #endif
 
 void write_solution(Domain *locDom) {
+  /*
   Vector_h<Real_t> x_h = locDom->x;
   Vector_h<Real_t> y_h = locDom->y;
   Vector_h<Real_t> z_h = locDom->z;
@@ -4461,6 +4465,7 @@ void write_solution(Domain *locDom) {
     fprintf(fout, "%.10f\n", z_h[i]);
   }
   fclose(fout);
+  */
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -4553,7 +4558,7 @@ void VerifyAndWriteFinalOutput(Real_t elapsed_time, Domain &locDom, Int_t its,
     Real_t e_zero;
     // Real_t* d_ezero_ptr = locDom.e.raw() + locDom.octantCorner; /* octant
     // corner supposed to be 0 */
-    Vector_h e_all(locDom.e);
+    Vector_h e_all(locDom.e,"e_all from locDom e");
     e_zero = e_all[locDom.octantCorner];
     // cudaMemcpy(&e_zero, d_ezero_ptr, sizeof(Real_t), cudaMemcpyDeviceToHost);
 
