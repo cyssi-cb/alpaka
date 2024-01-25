@@ -26,6 +26,7 @@ void alpaka_copy(TSource &source, Ttarget &target, Textend &extend) {
   auto const devAcc = alpaka::getDevByIdx(platform, 0);
   QueueAcc queue(devAcc);
   // alpaka::memcpy(queue, target,source,extend);
+
   alpaka::memcpy(queue, target, source, extend);
   alpaka::wait(queue);
 };
@@ -91,6 +92,9 @@ public:
     if (this->size_param != a.size()) {
       this->resize(a.size());
     }
+    static int i=0;
+    std::cout<<i<<std::endl;
+    i++;
     alpaka_copy(a.getBuf(), *this->bufHost,
                 this->extent1D); // copy device to source
     return *this;

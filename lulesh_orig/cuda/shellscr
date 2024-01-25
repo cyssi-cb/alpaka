@@ -1,0 +1,27 @@
+#!/bin/bash
+
+values=(10 20 30 40 50 60 70 80 90 100 120 140 160 180 200)
+
+
+touch result.csv
+alpaka_output_file="outputAlpaka.txt"
+orig_output_file="outputOrig.txt"
+csv_output_file="result.csv"
+
+echo "Size³,Lulesh Original,Alpaka Port of Lulesh" > "$csv_output_file"
+# Loop through the list of values
+for current_value in "${values[@]}"; do
+    touch "$orig_output_file"
+    touch "$alpaka_output_file"
+    # Run the command with the current value and save output
+    ./lulesh_orig/cuda/lulesh2.0 -s "$current_value" 0 100 > "$orig_output_file"
+    ./build/lulesh/cuda/lulesh -s "$current_value" 0 100 > "$alpaka_output_file"
+    # Extract pattern using regex and append to CSV
+    pattern1=$(grep -oP 'Elapsed time\s*=\s*\K[0-9]+(\.[0-9]+)?' "$orig_output_file")
+    pattern2=$(grep -oP 'Elapsed time\s*=\s*\K[0-9]+(\.[0-9]+)?' "$alpaka_output_file")
+    echo "$current_value,$pattern1,$pattern2" >> "$csv_output_file"
+
+    rm "$orig_output_file"
+    rm "$alpaka_output_file"
+    echo "Value $current_value: Lulesh - $pattern1, Alpaka - $pattern2"
+done

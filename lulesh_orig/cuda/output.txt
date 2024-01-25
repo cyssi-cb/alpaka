@@ -1,0 +1,51 @@
+==12315== NVPROF is profiling process 12315, command: ./lulesh2.0 -s 10 0 100
+==12315== Profiling application: ./lulesh2.0 -s 10 0 100
+==12315== Profiling result:
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   35.64%  4.4238ms       100  44.238us  41.695us  48.126us  ApplyMaterialPropertiesAndUpdateVolume_kernel(int, double, double, double, double*, double*, double*, double*, double, double, double, double, double, int*, double*, double*, double*, double*, double, double*, double, int*, int, int const *, int const *, int)
+                   21.09%  2.6185ms       100  26.184us  24.767us  28.991us  void CalcVolumeForceForElems_kernel<bool=1>(double const *, double const *, double const *, double const *, double, int, int, int const *, double const *, double const *, double const *, double const *, double const *, double const *, double const *, double const *, double*, double*, double*, int*, int)
+                   17.74%  2.2021ms       100  22.021us  20.480us  24.224us  CalcKinematicsAndMonotonicQGradient_kernel(int, int, double, int const *, double const *, double const *, double const *, double const *, double const *, double const *, double const *, double const *, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, int*, int)
+                    5.57%  691.96us       100  6.9190us  6.5270us  7.5840us  CalcMonotonicQRegionForElems_kernel(double, double, double, double, double, int, int*, int*, int*, int*, int*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double, int*)
+                    3.71%  460.63us       100  4.6060us  4.3200us  4.9920us  void CalcTimeConstraintsForElems_kernel<int=128>(int, double, double, int*, double*, double*, double*, double*, double*)
+                    3.53%  438.52us       100  4.3850us  4.0960us  4.8000us  AddNodeForcesFromElems_kernel(int, int, int const *, int const *, int const *, double const *, double const *, double const *, double*, double*, double*, int)
+                    3.27%  405.62us       300  1.3520us  1.1840us  1.6640us  ApplyAccelerationBoundaryConditionsForNodes_kernel(int, double*, int*)
+                    3.26%  404.73us       100  4.0470us  3.8080us  4.4800us  void CalcMinDtOneBlock<int=1024>(double*, double*, double*, double*, int)
+                    2.01%  249.85us       100  2.4980us  2.3040us  3.1680us  CalcAccelerationForNodes_kernel(int, double*, double*, double*, double*, double*, double*, double*)
+                    1.81%  224.86us       100  2.2480us  2.0800us  2.4960us  CalcPositionAndVelocityForNodes_kernel(int, double, double, double*, double*, double*, double*, double*, double*, double const *, double const *, double const *)
+                    1.11%  138.37us        40  3.4590us  1.2160us  5.3430us  void thrust::cuda_cub::core::_kernel_agent<thrust::cuda_cub::__parallel_for::ParallelForAgent<thrust::cuda_cub::__uninitialized_fill::functor<thrust::device_ptr<double>, double>, unsigned long>, thrust::cuda_cub::__uninitialized_fill::functor<thrust::device_ptr<double>, double>, unsigned long>(thrust::device_ptr<double>, double)
+                    0.50%  61.856us        17  3.6380us  1.2160us  5.5360us  void thrust::cuda_cub::core::_kernel_agent<thrust::cuda_cub::__parallel_for::ParallelForAgent<thrust::cuda_cub::__uninitialized_fill::functor<thrust::device_ptr<int>, int>, unsigned long>, thrust::cuda_cub::__uninitialized_fill::functor<thrust::device_ptr<int>, int>, unsigned long>(thrust::device_ptr<int>, int)
+                    0.46%  57.247us        12  4.7700us  4.6090us  5.4080us  void thrust::cuda_cub::core::_kernel_agent<thrust::cuda_cub::__parallel_for::ParallelForAgent<thrust::cuda_cub::__fill::functor<thrust::detail::normal_iterator<thrust::device_ptr<double>>, double>, long>, thrust::cuda_cub::__fill::functor<thrust::detail::normal_iterator<thrust::device_ptr<double>>, double>, long>(thrust::device_ptr<double>, thrust::detail::normal_iterator<thrust::device_ptr<double>>)
+                    0.27%  33.980us        27  1.2580us     256ns  7.0720us  [CUDA memcpy HtoD]
+                    0.01%  1.2160us         1  1.2160us  1.2160us  1.2160us  [CUDA memcpy DtoH]
+==12332== NVPROF is profiling process 12332, command: ./lulesh2.0 -s 10 0 100
+==12332== Profiling application: ./lulesh2.0 -s 10 0 100
+==12332== Profiling result:
+==12332== Metric result:
+Invocations                               Metric Name                        Metric Description         Min         Max         Avg
+Device "NVIDIA GeForce GTX 1060 (0)"
+    Kernel: void thrust::cuda_cub::core::_kernel_agent<thrust::cuda_cub::__parallel_for::ParallelForAgent<thrust::cuda_cub::__fill::functor<thrust::detail::normal_iterator<thrust::device_ptr<double>>, double>, long>, thrust::cuda_cub::__fill::functor<thrust::detail::normal_iterator<thrust::device_ptr<double>>, double>, long>(thrust::device_ptr<double>, thrust::detail::normal_iterator<thrust::device_ptr<double>>)
+         12                        achieved_occupancy                        Achieved Occupancy    0.118861    0.121236    0.119539
+    Kernel: CalcPositionAndVelocityForNodes_kernel(int, double, double, double*, double*, double*, double*, double*, double*, double const *, double const *, double const *)
+        100                        achieved_occupancy                        Achieved Occupancy    0.065073    0.065636    0.065383
+    Kernel: AddNodeForcesFromElems_kernel(int, int, int const *, int const *, int const *, double const *, double const *, double const *, double*, double*, double*, int)
+        100                        achieved_occupancy                        Achieved Occupancy    0.056266    0.057237    0.056693
+    Kernel: ApplyMaterialPropertiesAndUpdateVolume_kernel(int, double, double, double, double*, double*, double*, double*, double, double, double, double, double, int*, double*, double*, double*, double*, double, double*, double, int*, int, int const *, int const *, int)
+        100                        achieved_occupancy                        Achieved Occupancy    0.056481    0.058691    0.057826
+    Kernel: CalcKinematicsAndMonotonicQGradient_kernel(int, int, double, int const *, double const *, double const *, double const *, double const *, double const *, double const *, double const *, double const *, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, int*, int)
+        100                        achieved_occupancy                        Achieved Occupancy    0.049837    0.050849    0.050357
+    Kernel: void thrust::cuda_cub::core::_kernel_agent<thrust::cuda_cub::__parallel_for::ParallelForAgent<thrust::cuda_cub::__uninitialized_fill::functor<thrust::device_ptr<int>, int>, unsigned long>, thrust::cuda_cub::__uninitialized_fill::functor<thrust::device_ptr<int>, int>, unsigned long>(thrust::device_ptr<int>, int)
+         17                        achieved_occupancy                        Achieved Occupancy    0.121722    0.196826    0.126875
+    Kernel: ApplyAccelerationBoundaryConditionsForNodes_kernel(int, double*, int*)
+        300                        achieved_occupancy                        Achieved Occupancy    0.055066    0.062182    0.062005
+    Kernel: void CalcVolumeForceForElems_kernel<bool=1>(double const *, double const *, double const *, double const *, double, int, int, int const *, double const *, double const *, double const *, double const *, double const *, double const *, double const *, double const *, double*, double*, double*, int*, int)
+        100                        achieved_occupancy                        Achieved Occupancy    0.049968    0.051471    0.050718
+    Kernel: CalcMonotonicQRegionForElems_kernel(double, double, double, double, double, int, int*, int*, int*, int*, int*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double, int*)
+        100                        achieved_occupancy                        Achieved Occupancy    0.061401    0.061839    0.061619
+    Kernel: void thrust::cuda_cub::core::_kernel_agent<thrust::cuda_cub::__parallel_for::ParallelForAgent<thrust::cuda_cub::__uninitialized_fill::functor<thrust::device_ptr<double>, double>, unsigned long>, thrust::cuda_cub::__uninitialized_fill::functor<thrust::device_ptr<double>, double>, unsigned long>(thrust::device_ptr<double>, double)
+         40                        achieved_occupancy                        Achieved Occupancy    0.118855    0.182804    0.124347
+    Kernel: void CalcTimeConstraintsForElems_kernel<int=128>(int, double, double, int*, double*, double*, double*, double*, double*)
+        100                        achieved_occupancy                        Achieved Occupancy    0.057356    0.057738    0.057627
+    Kernel: void CalcMinDtOneBlock<int=1024>(double*, double*, double*, double*, int)
+        100                        achieved_occupancy                        Achieved Occupancy    0.466044    0.474204    0.471797
+    Kernel: CalcAccelerationForNodes_kernel(int, double*, double*, double*, double*, double*, double*, double*)
+        100                        achieved_occupancy                        Achieved Occupancy    0.065599    0.066036    0.065876

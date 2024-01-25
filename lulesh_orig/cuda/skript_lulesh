@@ -1,0 +1,8 @@
+#!/bin/bash
+
+sudo /usr/local/cuda-12.2/bin/nvprof --print-gpu-summary --csv --log-file output.csv ./lulesh2.0 -s 10 0 100
+sudo /usr/local/cuda-12.2/bin/nvprof --metrics achieved_occupancy --csv --log-file output.csv ./lulesh2.0 -s 10 0 100
+cat output.csv output2.csv > output3.csv
+rm output.csv
+rm output2.csv
+mv output3.csv output.csv
