@@ -70,7 +70,6 @@ Additional BSD Notice
 #include "sm_utils.inl"
 #include "util.h"
 #include <alpaka/alpaka.hpp>
-#include <alpaka/example/ExampleDefaultAcc.hpp>
 #include <cuda.h>
 #include <fstream>
 #include <iomanip>
@@ -1092,7 +1091,7 @@ Domain *NewDomain(char *argv[], Int_t numRanks, Index_t colLoc, Index_t rowLoc,
 #endif
   }
   // set initial deltatime base on analytic CFL calculation
-  domain->deltatime_h = (.5 * cbrt(domain->volo.accessIndex(0,"from accessing domain->volo"))) / sqrt(2 * einit);
+  domain->deltatime_h = (.5 * cbrt(domain->volo.accessIndex(1))) / sqrt(2 * einit);
   domain->cost = cost;
   domain->regNumList.resize(domain->numElem);  // material indexset
   domain->regElemlist.resize(domain->numElem); // material indexset
@@ -1306,7 +1305,7 @@ static inline void TimeIncrement(Domain *domain) {
 
   // To make sure dtcourant and dthydro have been updated on host
   Real_t targetdt = domain->stoptime - domain->time_h;
-  domain->constraints_h.copyfromdev(domain->constraints_d," copy constraint values from device"); //copy all constraint values from device
+  domain->constraints_h=domain->constraints_d; //copy all constraint values from device
   if ((domain->dtfixed <= Real_t(0.0)) && (domain->cycle != Int_t(0))) {
 
     Real_t ratio;
@@ -2641,13 +2640,13 @@ static inline void CalcVolumeForceForElems(Domain *domain) {
 static inline void checkErrors(Domain *domain, int its, int myRank) {
   auto bad_vol=domain->constraints_h[2];
   auto bad_q=domain->constraints_h[3];
-  if (bad_vol != -1) {
+  if (bad_vol != -1.0) {
     printf("Rank %i: Volume Error in cell %d at iteration %d\n", myRank,
            bad_vol, its);
     exit(VolumeError);
   }
 
-  if (bad_q != -1) {
+  if (bad_q != -1.0) {
     printf("Rank %i: Q Error in cell %d at iteration %d\n", myRank,
            bad_q, its);
     exit(QStopError);
@@ -4448,7 +4447,7 @@ void DumpDomain(Domain *domain) {
 #endif
 
 void write_solution(Domain *locDom) {
-  /*
+
   Vector_h<Real_t> x_h = locDom->x;
   Vector_h<Real_t> y_h = locDom->y;
   Vector_h<Real_t> z_h = locDom->z;
@@ -4465,7 +4464,6 @@ void write_solution(Domain *locDom) {
     fprintf(fout, "%.10f\n", z_h[i]);
   }
   fclose(fout);
-  */
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -4558,7 +4556,7 @@ void VerifyAndWriteFinalOutput(Real_t elapsed_time, Domain &locDom, Int_t its,
     Real_t e_zero;
     // Real_t* d_ezero_ptr = locDom.e.raw() + locDom.octantCorner; /* octant
     // corner supposed to be 0 */
-    Vector_h e_all(locDom.e,"e_all from locDom e");
+    Vector_h e_all(locDom.e);
     e_zero = e_all[locDom.octantCorner];
     // cudaMemcpy(&e_zero, d_ezero_ptr, sizeof(Real_t), cudaMemcpyDeviceToHost);
 

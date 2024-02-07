@@ -1,16 +1,1 @@
-Time,Calls,Avg,Min,Max,Name
-4.4238ms ,100,44.238us  ,41.695us ,48.126us,ApplyMaterialPropertiesAndUpdateVolume_kernel
-2.6185ms,100,26.184us,24.767us,28.991us,CalcVolumeForceForElems_kernel
-2.2021ms,100,22.021us,20.480us,24.224us,CalcKinematicsAndMonotonicQGradient_kernel
-691.96us,100,6.9190us,6.5270us,7.5840us,CalcMonotonicQRegionForElems_kernel
-460.63us,100,4.6060us,4.3200us,4.9920us,CalcTimeConstraintsForElems_kernel<int=128>
-438.52us,100,4.3850us,4.0960us,4.8000us,AddNodeForcesFromElems_kernel
-405.62us,300,1.3520us,1.1840us,1.6640us,ApplyAccelerationBoundaryConditionsForNodes_kernel
-404.73us,100,4.0470us,3.8080us,4.4800us,CalcMinDtOneBlock<int=1024>
-249.85us,100,2.4980us,2.3040us,3.1680us,CalcAccelerationForNodes_kernel
-224.86us,100,2.2480us,2.0800us,2.4960us,CalcPositionAndVelocityForNodes_kernel
-138.37us,40,3.4590us,1.2160us,5.3430us,thrust::cuda_cub::__uninitialized_fill::functor
-61.856us,17,3.6380us,1.2160us,5.5360us,thrust::cuda_cub::__uninitialized_fill::functor
-57.247us,12,4.7700us,4.6090us,5.4080us,thrust::cuda_cub::__fill::functor
-33.980us,27,1.2580us,256ns,7.0720us,[CUDA memcpy HtoD]
-1.2160us,1,1.2160us,1.2160us,1.2160us,[CUDA memcpy DtoH]]
+======== Error: application not found.

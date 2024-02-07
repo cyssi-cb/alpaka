@@ -105,7 +105,7 @@ namespace test{
             deviceVec=hostVec;//copy to device
 
             Vector_h<Real_t> test(numElems,.0);
-            test.copyfromdev(deviceVec,"test");
+            test=deviceVec;
 
             //test=deviceVec;//copy from device
 

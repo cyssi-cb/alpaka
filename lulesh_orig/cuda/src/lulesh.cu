@@ -2662,7 +2662,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
         num_threads
       );
     }
-    std::ofstream inFile("../../../CalcVolumeForceForElems_kernel.txt");
+   /* std::ofstream inFile("../../../CalcVolumeForceForElems_kernel.txt");
     write(domain->volo,inFile);
     write(domain->v,inFile);
     write(domain->p,inFile);
@@ -2681,7 +2681,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     write(*fz_elem,inFile);
 
     inFile.close();
-    exit(1);
+    exit(1);*/
 
 
 #ifdef DOUBLE_PRECISION
@@ -3549,7 +3549,7 @@ void CalcMonotonicQRegionForElems_kernel(
     Real_t *qq, Real_t *ql,
     Real_t *q,
     Real_t qstop,
-    Index_t* bad_q 
+    Index_t* bad_q
     )
 {
     int ielem=blockDim.x*blockIdx.x + threadIdx.x;

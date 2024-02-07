@@ -12,18 +12,16 @@ namespace alpaka_utils {
 // using Acc = alpaka::ExampleDefaultAcc<alpaka::DimInt<1>, std::size_t>;
 // using Queue_ =alpaka::Queue<Acc, alpaka::Blocking>
 // bool set=false;
-template <typename Dim, typename Idx, typename kernel>
+template <typename Dim, typename Idx, typename kernel,typename... Args>
 static int alpakaExecuteBaseKernel(const kernel &obj,
                                    const alpaka::Vec<Dim, Idx> threadsPerGrid,
-                                   const bool blocking) {
-  using Acc = alpaka::ExampleDefaultAcc<alpaka::DimInt<1>, Idx>;
+                                   const bool blocking,Args&&... args) {
+  //using Acc = alpaka::ExampleDefaultAcc<alpaka::DimInt<1>, Idx>;
+  using Acc = alpaka::AccGpuCudaRt<alpaka::DimInt<1>, Idx>;
+  
   using Vec2_ = alpaka::Vec<alpaka::DimInt<2>, std::size_t>;
-
-  if (blocking) {
-#define Queue_ alpaka::Queue<Acc, alpaka::Blocking>
-  } else {
-#define Queue_ alpaka::Queue<Acc, alpaka::NonBlocking>
-  }
+  using Queue_=alpaka::Queue<Acc, alpaka::Blocking>;
+  
   static auto const devAcc = std::make_shared<alpaka::Dev<Acc>>(
       alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0));
 
@@ -40,7 +38,7 @@ static int alpakaExecuteBaseKernel(const kernel &obj,
       false,
       alpaka::GridBlockExtentSubDivRestrictions::Unrestricted);*/
   // alpaka::trait::GetAccDevProps<alpaka::Dev<Acc>>(*devAcc);
-  auto const taskKernel = alpaka::createTaskKernel<Acc>(workDiv, obj);
+  auto const taskKernel = alpaka::createTaskKernel<Acc>(workDiv, obj,std::forward<Args>(args)...);
   alpaka::enqueue(queue, taskKernel);
   alpaka::wait(queue);
   return EXIT_SUCCESS;

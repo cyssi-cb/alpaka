@@ -18,7 +18,6 @@ using Dim1 = alpaka::DimInt<1u>;
 using Idx = std::size_t;
 using Acc = alpaka::ExampleDefaultAcc<Dim1, Idx>;
 using DevAcc = alpaka::Dev<Acc>;
-inline std::int32_t dth=0;
 template <typename TSource, typename Ttarget, typename Textend>
 void alpaka_copy(TSource &source, Ttarget &target, Textend &extend) {
 
@@ -72,14 +71,11 @@ public:
       pHost[i] = source[i];
     }
   }
-  Vector_h(Vector_d<T> &source,const std::string invocationfrom)
+  Vector_h(Vector_d<T> &source)
       : extent1D(Vec(source.size())), size_param(source.size()) {
-        std::cout<<invocationfrom<<std::endl;
     bufHost = std::make_shared<Buffer>(alpaka::allocBuf<T, Idx>(
         alpaka::getDevByIdx(alpaka::PlatformCpu{}, 0), this->extent1D));
     this->pHost = alpaka::getPtrNative(*this->bufHost);
-    std::cout<<dth<<std::endl;
-    dth++;
     alpaka_copy(source.getBuf(), *this->bufHost,
                 this->extent1D); // copy device to host
   }
@@ -91,13 +87,10 @@ public:
       pHost[i] = a.pHost[i];
     return *this;
   }
-  Vector_h<T> &copyfromdev(Vector_d<T> &a,std::string invocation) {
-    std::cout<<invocation<<std::endl;
+  Vector_h<T> &operator=(Vector_d<T> &a) {
     if (this->size_param != a.size()) {
       this->resize(a.size());
     }
-    std::cout<<dth<<std::endl;
-    dth++;
     alpaka_copy(a.getBuf(), *this->bufHost,
                 this->extent1D); // copy device to source
     return *this;
@@ -187,8 +180,8 @@ public:
     return *this;
   }
 
-  template <typename TIDX> T accessIndex(TIDX index,std::string from) {
-    Vector_h host(*this,from);
+  template <typename TIDX> T accessIndex(TIDX index) {
+    Vector_h host(*this);
 
     return host[index];
   }
@@ -219,7 +212,7 @@ public:
     this is slow and not recommended use a kernel instead
   */
   void changeValue(Idx from, Idx numelems, T *vec) {
-    Vector_h<T> hostvec(*this,"copy from dev to change value");
+    Vector_h<T> hostvec(*this);
     for (Idx i(from); i < from + numelems && i < this->size_param; i++)
       hostvec[i] = vec[i];
     alpaka_copy(hostvec.getBuf(), *this->bufAcc, this->extent1D);

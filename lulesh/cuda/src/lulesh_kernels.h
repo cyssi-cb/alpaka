@@ -681,7 +681,7 @@ ALPAKA_FN_ACC static auto inline CalcElemShapeFunctionDerivatives(
   *volume = Real_t(8.) * (fjxet * cjxet + fjyet * cjyet + fjzet * cjzet);
 }
 
-ALPAKA_FN_ACC void inline ApplyMaterialPropertiesForElems_device(
+ALPAKA_FN_ACC void ApplyMaterialPropertiesForElems_device(
     Real_t eosvmin, Real_t eosvmax, Real_t *vnew, Real_t *v, Real_t &vnewc,
     Real_t *constraints, Index_t zn) {
   vnewc = vnew[zn];
@@ -1666,18 +1666,21 @@ public:
 
   template <typename TAcc>
   ALPAKA_FN_ACC auto operator()(TAcc const &acc) const -> void {
-    using Dim = alpaka::Dim<TAcc>;
+    /*using Dim = alpaka::Dim<TAcc>;
     using Idx = alpaka::Idx<TAcc>;
     using Vec = alpaka::Vec<Dim, Idx>;
-    using Vec1 = alpaka::Vec<alpaka::DimInt<1u>, Idx>;
+    using Vec1 = alpaka::Vec<alpaka::DimInt<1u>, Idx>;*/
 
-    Vec const globalThreadIdx =
-        alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-    Vec const globalThreadExtent =
-        alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
-    Vec1 const linearizedGlobalThreadIdx =
-        alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
-    Index_t i = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+    //Vec const globalThreadIdx =
+        //alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+    //printf("global ThreadIdx %d,%d\n",globalThreadIdx[0],globalThreadIdx[1]);
+    //Vec const globalThreadExtent =
+        //alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc)[0];
+    //printf("global ThreadExtent %d,%d\n",globalThreadExtent[0],globalThreadExtent[1]);
+    //Vec1 const linearizedGlobalThreadIdx =
+        //alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
+    Index_t i= alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc)[0];
+    //Index_t i = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
 
     Real_t e_old, delvc, p_old, q_old, e_temp, delvc_temp, p_temp, q_temp;
     Real_t compression, compHalfStep;
