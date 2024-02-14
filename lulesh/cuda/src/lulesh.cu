@@ -3876,9 +3876,15 @@ static inline void ApplyMaterialPropertiesAndUpdateVolume(Domain *domain) {
     using ApplyMaterialPropertiesAndUpdateVolume = lulesh_port_kernels::
         ApplyMaterialPropertiesAndUpdateVolume_kernel_class;
     //cudaCheckError();
-    ApplyMaterialPropertiesAndUpdateVolume
-        ApplyMaterialPropertiesAndUpdateVolumeKernel(
-            length, domain->refdens, domain->e_cut, domain->emin,
+    ApplyMaterialPropertiesAndUpdateVolume ApplyMaterialPropertiesAndUpdateVolumeKernel;
+
+    using Dim2 = alpaka::DimInt<2>;
+    using Idx = std::size_t;
+    using Vec2 = alpaka::Vec<Dim2, Idx>;
+    //cudaCheckError();
+    alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
+        ApplyMaterialPropertiesAndUpdateVolumeKernel, Vec2{dimBlock, dimGrid},
+        true,length, domain->refdens, domain->e_cut, domain->emin,
             domain->ql.raw(), domain->qq.raw(), domain->vnew->raw(),
             domain->v.raw(), domain->pmin, domain->p_cut, domain->q_cut,
             domain->eosvmin, domain->eosvmax, domain->regElemlist.raw(),
@@ -3886,15 +3892,6 @@ static inline void ApplyMaterialPropertiesAndUpdateVolume(Domain *domain) {
             domain->q.raw(), domain->ss4o3, domain->ss.raw(), domain->v_cut,
             domain->constraints_d.raw(), domain->cost, domain->regCSR.raw(),
             domain->regReps.raw(), domain->numReg);
-
-    using Dim2 = alpaka::DimInt<2>;
-    using Idx = std::size_t;
-    using Vec2 = alpaka::Vec<Dim2, Idx>;
-
-    //cudaCheckError();
-    alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
-        ApplyMaterialPropertiesAndUpdateVolumeKernel, Vec2{dimBlock, dimGrid},
-        true);
 
 #else
 
