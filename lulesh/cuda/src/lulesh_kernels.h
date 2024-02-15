@@ -682,7 +682,7 @@ ALPAKA_FN_ACC static auto inline CalcElemShapeFunctionDerivatives(
 }
 
 ALPAKA_FN_ACC void ApplyMaterialPropertiesForElems_device(
-    Real_t eosvmin, Real_t eosvmax, Real_t *vnew, Real_t *v, Real_t &vnewc,
+    Real_t &eosvmin, Real_t &eosvmax, Real_t *vnew, Real_t *v, Real_t &vnewc,
     Real_t *constraints, Index_t zn) {
   vnewc = vnew[zn];
 
@@ -712,7 +712,7 @@ ALPAKA_FN_ACC void ApplyMaterialPropertiesForElems_device(
 }
 
 ALPAKA_FN_ACC auto inline UpdateVolumesForElems_device(Index_t numElem,
-                                                       Real_t v_cut,
+                                                       Real_t & v_cut,
                                                        Real_t *vnew, Real_t *v,
                                                        Index_t i) {
   Real_t tmpV;
@@ -1639,15 +1639,15 @@ public:
 
   template <typename TAcc>
   ALPAKA_FN_ACC auto operator()(TAcc const &acc,Index_t length, Real_t rho0, Real_t e_cut, Real_t emin,
-      Real_t * ql, Real_t *qq,
-      Real_t * vnew, Real_t * v, Real_t pmin,
+      Real_t * __restrict__ ql, Real_t *__restrict__ qq,
+      Real_t * __restrict__ vnew, Real_t * __restrict__ v, Real_t pmin,
       Real_t p_cut, Real_t q_cut, Real_t eosvmin, Real_t eosvmax,
-      Index_t * regElemlist,
+      Index_t * __restrict__ regElemlist,
       //        const Index_t* __restrict__ regElemlist,
-      Real_t * e, Real_t * delv, Real_t * p,
-      Real_t * q, Real_t ss4o3, Real_t * ss,
-      Real_t v_cut, Real_t * constraints, const Int_t cost,
-      const Index_t *regCSR, const Index_t *regReps, const Index_t numReg) const -> void {
+      Real_t * __restrict__ e, Real_t * __restrict__ delv, Real_t * __restrict__ p,
+      Real_t * __restrict__ q, Real_t ss4o3, Real_t * __restrict__ ss,
+      Real_t v_cut, Real_t * __restrict__ constraints, const Int_t cost,
+      const Index_t *__restrict__ regCSR, const Index_t * __restrict__ regReps, const Index_t numReg) const -> void {
      
     /*using Dim = alpaka::Dim<TAcc>;
     using Idx = alpaka::Idx<TAcc>;
