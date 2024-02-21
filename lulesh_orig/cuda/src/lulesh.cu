@@ -89,42 +89,50 @@ Additional BSD Notice
 /****************************************************/
 /* Allow flexibility for arithmetic representations */
 /****************************************************/
-inline __device__ real4 SQRT(real4 arg)
+// ab
+__device__ real4 SQRT(real4 arg)
 {
     return sqrtf(arg);
 }
 
-inline __device__ real8 SQRT(real8 arg)
+// ab
+__device__ real8 SQRT(real8 arg)
 {
     return sqrt(arg);
 }
 
-inline __device__ real4 CBRT(real4 arg)
+// ab
+__device__ real4 CBRT(real4 arg)
 {
     return cbrtf(arg);
 }
 
-inline __device__ real8 CBRT(real8 arg)
+// ab
+__device__ real8 CBRT(real8 arg)
 {
     return cbrt(arg);
 }
 
-inline __device__ __host__ real4 FABS(real4 arg)
+// ab
+__device__ __host__ real4 FABS(real4 arg)
 {
     return fabsf(arg);
 }
 
-inline __device__ __host__ real8 FABS(real8 arg)
+// ab
+__device__ __host__ real8 FABS(real8 arg)
 {
     return fabs(arg);
 }
 
-inline __device__ real4 FMAX(real4 arg1, real4 arg2)
+// ab
+__device__ real4 FMAX(real4 arg1, real4 arg2)
 {
     return fmaxf(arg1, arg2);
 }
 
-inline __device__ real8 FMAX(real8 arg1, real8 arg2)
+// ab
+__device__ real8 FMAX(real8 arg1, real8 arg2)
 {
     return fmax(arg1, arg2);
 }
@@ -174,8 +182,9 @@ inline __device__ real8 FMAX(real8 arg1, real8 arg2)
 
 /*
 __device__
-static
-__forceinline
+
+__force//ab
+
 void SumOverNodes(Real_t& val, volatile Real_t* smem, int cta_elem, int node) {
 
   int tid = (cta_elem << 3) + node;
@@ -211,7 +220,7 @@ void write(Vector_d<T>& vec, std::ofstream& file)
     }
 }
 
-static __device__
+__device__
 
     // ab
     void
@@ -222,7 +231,7 @@ static __device__
     val += utils::shfl_xor(val, 1, 8);
 }
 
-static __host__ __device__
+__host__ __device__
 
     // ab
     Real_t
@@ -317,7 +326,7 @@ static __host__ __device__
     return volume;
 }
 
-static __host__ __device__
+__host__ __device__
 
     // ab
     Real_t
@@ -1344,7 +1353,7 @@ void Domain::sortRegions(Vector_h<Int_t>& regReps_h, Vector_h<Index_t>& regSorte
 }
 
 // simple function for int pow x^y, y >= 0
-static Int_t POW(Int_t x, Int_t y)
+Int_t POW(Int_t x, Int_t y)
 {
     Int_t res = 1;
     for(Int_t i = 0; i < y; i++)
@@ -1509,7 +1518,8 @@ void Domain::CreateRegionIndexSets(Int_t nr, Int_t b)
 
 } // end of create function
 
-static inline void TimeIncrement(Domain* domain)
+// ab
+void TimeIncrement(Domain* domain)
 {
     // To make sure dtcourant and dthydro have been updated on host
     cudaEventSynchronize(domain->time_constraint_computed);
@@ -1575,7 +1585,7 @@ static inline void TimeIncrement(Domain* domain)
     ++domain->cycle;
 }
 
-static __device__
+__device__
 
     // ab
     void
@@ -1689,7 +1699,7 @@ static __device__
     *volume = Real_t(8.) * (fjxet * cjxet + fjyet * cjyet + fjzet * cjzet);
 }
 
-static __device__
+__device__
     // ab
     void
     SumElemFaceNormal(
@@ -1744,7 +1754,7 @@ static __device__
     *normalZ3 += areaZ;
 }
 
-static __device__
+__device__
     // ab
     void
     SumElemFaceNormal_warp_per_4cell(
@@ -1804,7 +1814,8 @@ static __device__
     }
 }
 
-static inline __device__
+// ab
+__device__
 
     void
     CalcElemNodeNormals(
@@ -2017,7 +2028,7 @@ __global__ void AddNodeForcesFromElems_kernel(
     }
 }
 
-static __device__
+__device__
     // ab
     void
     VoluDer(
@@ -2059,7 +2070,7 @@ static __device__
     *dvdz *= twelfth;
 }
 
-static __device__
+__device__
     // ab
     void
     CalcElemVolumeDerivative(
@@ -2248,7 +2259,7 @@ static __device__
         &dvdz[7]);
 }
 
-static __device__
+__device__
     // ab
     void
     CalcElemFBHourglassForce(
@@ -2433,36 +2444,36 @@ __global__
 #endif
         void CalcVolumeForceForElems_kernel(
 
-            Real_t const* __restrict__ volo,
-            Real_t const* __restrict__ v,
-            Real_t const* __restrict__ p,
-            Real_t const* __restrict__ q,
+            Real_t const* volo,
+            Real_t const* v,
+            Real_t const* p,
+            Real_t const* q,
             Real_t hourg,
             Index_t numElem,
             Index_t padded_numElem,
-            Index_t const* __restrict__ nodelist,
-            Real_t const* __restrict__ ss,
-            Real_t const* __restrict__ elemMass,
-            Real_t const* __restrict__ x,
-            Real_t const* __restrict__ y,
-            Real_t const* __restrict__ z,
-            Real_t const* __restrict__ xd,
-            Real_t const* __restrict__ yd,
-            Real_t const* __restrict__ zd,
+            Index_t const* nodelist,
+            Real_t const* ss,
+            Real_t const* elemMass,
+            Real_t const* x,
+            Real_t const* y,
+            Real_t const* z,
+            Real_t const* xd,
+            Real_t const* yd,
+            Real_t const* zd,
 // TextureObj<Real_t> x,  TextureObj<Real_t> y,  TextureObj<Real_t> z,
 // TextureObj<Real_t> xd,  TextureObj<Real_t> yd,  TextureObj<Real_t> zd,
 // TextureObj<Real_t>* x,  TextureObj<Real_t>* y,  TextureObj<Real_t>* z,
 // TextureObj<Real_t>* xd,  TextureObj<Real_t>* yd,  TextureObj<Real_t>* zd,
 #ifdef DOUBLE_PRECISION // For floats, use atomicAdd
-            Real_t* __restrict__ fx_elem,
-            Real_t* __restrict__ fy_elem,
-            Real_t* __restrict__ fz_elem,
+            Real_t* fx_elem,
+            Real_t* fy_elem,
+            Real_t* fz_elem,
 #else
-            Real_t* __restrict__ fx_node,
-            Real_t* __restrict__ fy_node,
-            Real_t* __restrict__ fz_node,
+            Real_t* fx_node,
+            Real_t* fy_node,
+            Real_t* fz_node,
 #endif
-            Index_t* __restrict__ bad_vol,
+            Index_t* bad_vol,
             Index_t const num_threads)
 
 {
@@ -2632,18 +2643,18 @@ __global__
 template<bool hourg_gt_zero, int cta_size>
 __global__ void CalcVolumeForceForElems_kernel_warp_per_4cell(
 
-    Real_t const* __restrict__ volo,
-    Real_t const* __restrict__ v,
-    Real_t const* __restrict__ p,
-    Real_t const* __restrict__ q,
+    Real_t const* volo,
+    Real_t const* v,
+    Real_t const* p,
+    Real_t const* q,
     Real_t hourg,
     Index_t numElem,
     Index_t padded_numElem,
-    Index_t const* __restrict__ nodelist,
-    Real_t const* __restrict__ ss,
-    Real_t const* __restrict__ elemMass,
-    // const Real_t __restrict__ *x,  const Real_t __restrict__ *y,  const Real_t __restrict__ *z,
-    // const Real_t __restrict__ *xd,  const Real_t __restrict__ *yd,  const Real_t __restrict__ *zd,
+    Index_t const* nodelist,
+    Real_t const* ss,
+    Real_t const* elemMass,
+    // const Real_t  *x,  const Real_t  *y,  const Real_t  *z,
+    // const Real_t  *xd,  const Real_t  *yd,  const Real_t  *zd,
     Real_t const* x,
     Real_t const* y,
     Real_t const* z,
@@ -2651,15 +2662,15 @@ __global__ void CalcVolumeForceForElems_kernel_warp_per_4cell(
     Real_t const* yd,
     Real_t const* zd,
 #ifdef DOUBLE_PRECISION // For floats, use atomicAdd
-    Real_t* __restrict__ fx_elem,
-    Real_t* __restrict__ fy_elem,
-    Real_t* __restrict__ fz_elem,
+    Real_t* fx_elem,
+    Real_t* fy_elem,
+    Real_t* fz_elem,
 #else
-    Real_t* __restrict__ fx_node,
-    Real_t* __restrict__ fy_node,
-    Real_t* __restrict__ fz_node,
+    Real_t* fx_node,
+    Real_t* fy_node,
+    Real_t* fz_node,
 #endif
-    Index_t* __restrict__ bad_vol,
+    Index_t* bad_vol,
     Index_t const num_threads)
 
 {
@@ -3124,7 +3135,8 @@ __global__ void CalcVolumeForceForElems_kernel_warp_per_4cell(
     } // If elem < numElem
 }
 
-static inline void CalcVolumeForceForElems(Real_t const hgcoef, Domain* domain)
+// ab
+void CalcVolumeForceForElems(Real_t const hgcoef, Domain* domain)
 {
     Index_t numElem = domain->numElem;
     Index_t padded_numElem = domain->padded_numElem;
@@ -3259,7 +3271,8 @@ static inline void CalcVolumeForceForElems(Real_t const hgcoef, Domain* domain)
 }
 
 /*
-static inline
+ //ab
+
 void CalcVolumeForceForElems_warp_per_4cell(const Real_t hgcoef,Domain *domain)
 {
   // We're gonna map one warp per 4 cells, i.e. one thread per vertex
@@ -3378,7 +3391,8 @@ void CalcVolumeForceForElems_warp_per_4cell(const Real_t hgcoef,Domain *domain)
 }
 */
 
-static inline void CalcVolumeForceForElems(Domain* domain)
+// ab
+void CalcVolumeForceForElems(Domain* domain)
 {
     Real_t const hgcoef = domain->hgcoef;
 
@@ -3387,7 +3401,8 @@ static inline void CalcVolumeForceForElems(Domain* domain)
     // CalcVolumeForceForElems_warp_per_4cell(hgcoef,domain);
 }
 
-static inline void checkErrors(Domain* domain, int its, int myRank)
+// ab
+void checkErrors(Domain* domain, int its, int myRank)
 {
     if(*(domain->bad_vol_h) != -1)
     {
@@ -3402,7 +3417,8 @@ static inline void checkErrors(Domain* domain, int its, int myRank)
     }
 }
 
-static inline void CalcForceForNodes(Domain* domain)
+// ab
+void CalcForceForNodes(Domain* domain)
 {
 #if USE_MPI
     CommRecv(*domain, MSG_COMM_SBN, 3, domain->sizeX + 1, domain->sizeY + 1, domain->sizeZ + 1, true, false);
@@ -3459,7 +3475,8 @@ __global__ void CalcAccelerationForNodes_kernel(
     }
 }
 
-static inline void CalcAccelerationForNodes(Domain* domain)
+// ab
+void CalcAccelerationForNodes(Domain* domain)
 {
     Index_t dimBlock = 128;
     Index_t dimGrid = PAD_DIV(domain->numNode, dimBlock);
@@ -3487,7 +3504,8 @@ __global__ void ApplyAccelerationBoundaryConditionsForNodes_kernel(int numNodeBC
     }
 }
 
-static inline void ApplyAccelerationBoundaryConditionsForNodes(Domain* domain)
+// ab
+void ApplyAccelerationBoundaryConditionsForNodes(Domain* domain)
 {
     Index_t dimBlock = 128;
 
@@ -3517,15 +3535,15 @@ __global__ void CalcPositionAndVelocityForNodes_kernel(
     int numNode,
     Real_t const deltatime,
     Real_t const u_cut,
-    Real_t* __restrict__ x,
-    Real_t* __restrict__ y,
-    Real_t* __restrict__ z,
-    Real_t* __restrict__ xd,
-    Real_t* __restrict__ yd,
-    Real_t* __restrict__ zd,
-    Real_t const* __restrict__ xdd,
-    Real_t const* __restrict__ ydd,
-    Real_t const* __restrict__ zdd)
+    Real_t* x,
+    Real_t* y,
+    Real_t* z,
+    Real_t* xd,
+    Real_t* yd,
+    Real_t* zd,
+    Real_t const* xdd,
+    Real_t const* ydd,
+    Real_t const* zdd)
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
     if(i < numNode)
@@ -3554,7 +3572,8 @@ __global__ void CalcPositionAndVelocityForNodes_kernel(
     }
 }
 
-static inline void CalcPositionAndVelocityForNodes(Real_t const u_cut, Domain* domain)
+// ab
+void CalcPositionAndVelocityForNodes(Real_t const u_cut, Domain* domain)
 {
     Index_t dimBlock = 128;
     Index_t dimGrid = PAD_DIV(domain->numNode, dimBlock);
@@ -3577,7 +3596,8 @@ static inline void CalcPositionAndVelocityForNodes(Real_t const u_cut, Domain* d
     // cudaCheckError();
 }
 
-static inline void LagrangeNodal(Domain* domain)
+// ab
+void LagrangeNodal(Domain* domain)
 {
 #ifdef SEDOV_SYNC_POS_VEL_EARLY
     Domain_member fieldData[6];
@@ -3637,7 +3657,8 @@ static inline void LagrangeNodal(Domain* domain)
     return;
 }
 
-static inline __device__
+// ab
+__device__
 
     Real_t
     AreaFace(
@@ -3665,7 +3686,8 @@ static inline __device__
     return area;
 }
 
-static inline __device__
+// ab
+__device__
 
     Real_t
     CalcElemCharacteristicLength(Real_t const x[8], Real_t const y[8], Real_t const z[8], Real_t const volume)
@@ -3695,7 +3717,7 @@ static inline __device__
     return charLength;
 }
 
-static __device__
+__device__
 
     // ab
     void
@@ -3752,7 +3774,7 @@ static __device__
     d[3] = Real_t(.5) * (dzddy + dyddz);
 }
 
-static __device__ // ab
+__device__ // ab
     void
     CalcMonoGradient(
         Real_t* x,
@@ -3854,16 +3876,16 @@ __global__
         Index_t numElem,
         Index_t padded_numElem,
         Real_t const dt,
-        Index_t const* __restrict__ nodelist,
-        Real_t const* __restrict__ volo,
-        Real_t const* __restrict__ v,
+        Index_t const* nodelist,
+        Real_t const* volo,
+        Real_t const* v,
 
-        Real_t const* __restrict__ x,
-        Real_t const* __restrict__ y,
-        Real_t const* __restrict__ z,
-        Real_t const* __restrict__ xd,
-        Real_t const* __restrict__ yd,
-        Real_t const* __restrict__ zd,
+        Real_t const* x,
+        Real_t const* y,
+        Real_t const* z,
+        Real_t const* xd,
+        Real_t const* yd,
+        Real_t const* zd,
 
         // TextureObj<Real_t> x,
         // TextureObj<Real_t> y,
@@ -3879,20 +3901,20 @@ __global__
         // TextureObj<Real_t>* zd,
 
 
-        Real_t* __restrict__ vnew,
-        Real_t* __restrict__ delv,
-        Real_t* __restrict__ arealg,
-        Real_t* __restrict__ dxx,
-        Real_t* __restrict__ dyy,
-        Real_t* __restrict__ dzz,
-        Real_t* __restrict__ vdov,
-        Real_t* __restrict__ delx_zeta,
-        Real_t* __restrict__ delv_zeta,
-        Real_t* __restrict__ delx_xi,
-        Real_t* __restrict__ delv_xi,
-        Real_t* __restrict__ delx_eta,
-        Real_t* __restrict__ delv_eta,
-        Index_t* __restrict__ bad_vol,
+        Real_t* vnew,
+        Real_t* delv,
+        Real_t* arealg,
+        Real_t* dxx,
+        Real_t* dyy,
+        Real_t* dzz,
+        Real_t* vdov,
+        Real_t* delx_zeta,
+        Real_t* delv_zeta,
+        Real_t* delx_xi,
+        Real_t* delv_xi,
+        Real_t* delx_eta,
+        Real_t* delv_eta,
+        Index_t* bad_vol,
         Index_t const num_threads)
 {
     Real_t B[3][8]; /** shape function derivatives */
@@ -4028,7 +4050,8 @@ __global__
     }
 }
 
-static inline void CalcKinematicsAndMonotonicQGradient(Domain* domain)
+// ab
+void CalcKinematicsAndMonotonicQGradient(Domain* domain)
 {
     Index_t numElem = domain->numElem;
     Index_t padded_numElem = domain->padded_numElem;
@@ -4088,7 +4111,7 @@ __global__
             Index_t elength,
 
             Index_t* regElemlist,
-            //    const Index_t* __restrict__ regElemlist,
+            //    const Index_t*  regElemlist,
             Index_t* elemBC,
             Index_t* lxim,
             Index_t* lxip,
@@ -4317,7 +4340,8 @@ __global__
     }
 }
 
-static inline void CalcMonotonicQRegionForElems(Domain* domain)
+// ab
+void CalcMonotonicQRegionForElems(Domain* domain)
 {
     Real_t const ptiny = Real_t(1.e-36);
     Real_t monoq_max_slope = domain->monoq_max_slope;
@@ -4365,7 +4389,7 @@ static inline void CalcMonotonicQRegionForElems(Domain* domain)
     // cudaCheckError();
 }
 
-static __device__ // ab
+__device__ // ab
     void
     CalcPressureForElems_device(
         Real_t& p_new,
@@ -4398,7 +4422,7 @@ static __device__ // ab
     p_new = p_temp;
 }
 
-static __device__ // ab
+__device__ // ab
     void
     CalcSoundSpeedForElems_device(
         Real_t& vnewc,
@@ -4424,17 +4448,14 @@ static __device__ // ab
     ss[iz] = ssTmp;
 }
 
-static __device__
-    // ab
-    void
-    ApplyMaterialPropertiesForElems_device(
-        Real_t& eosvmin,
-        Real_t& eosvmax,
-        Real_t* vnew,
-        Real_t* v,
-        Real_t& vnewc,
-        Index_t* bad_vol,
-        Index_t zn)
+__device__ void ApplyMaterialPropertiesForElems_device(
+    Real_t& eosvmin,
+    Real_t& eosvmax,
+    Real_t* vnew,
+    Real_t* v,
+    Real_t& vnewc,
+    Index_t* bad_vol,
+    Index_t zn)
 {
     vnewc = vnew[zn];
 
@@ -4468,7 +4489,7 @@ static __device__
     }
 }
 
-static __device__
+__device__
     // ab
     void
     UpdateVolumesForElems_device(Index_t numElem, Real_t& v_cut, Real_t* vnew, Real_t* v, int i)
@@ -4481,7 +4502,7 @@ static __device__
     v[i] = tmpV;
 }
 
-static __device__
+__device__
     // ab
     void
     CalcEnergyForElems_device(
@@ -4617,7 +4638,8 @@ static __device__
     return;
 }
 
-inline __device__ Index_t giveMyRegion(Index_t const* regCSR, Index_t const i, Index_t const numReg)
+// ab
+__device__ Index_t giveMyRegion(Index_t const* regCSR, Index_t const i, Index_t const numReg)
 {
     for(Index_t reg = 0; reg < numReg - 1; reg++)
         if(i < regCSR[reg])
@@ -4630,25 +4652,25 @@ __global__ void ApplyMaterialPropertiesAndUpdateVolume_kernel(
     Real_t rho0,
     Real_t e_cut,
     Real_t emin,
-    Real_t* __restrict__ ql,
-    Real_t* __restrict__ qq,
-    Real_t* __restrict__ vnew,
-    Real_t* __restrict__ v,
+    Real_t* ql,
+    Real_t* qq,
+    Real_t* vnew,
+    Real_t* v,
     Real_t pmin,
     Real_t p_cut,
     Real_t q_cut,
     Real_t eosvmin,
     Real_t eosvmax,
-    Index_t* __restrict__ regElemlist,
-    //        const Index_t* __restrict__ regElemlist,
-    Real_t* __restrict__ e,
-    Real_t* __restrict__ delv,
-    Real_t* __restrict__ p,
-    Real_t* __restrict__ q,
+    Index_t* regElemlist,
+    //        const Index_t*  regElemlist,
+    Real_t* e,
+    Real_t* delv,
+    Real_t* p,
+    Real_t* q,
     Real_t ss4o3,
-    Real_t* __restrict__ ss,
+    Real_t* ss,
     Real_t v_cut,
-    Index_t* __restrict__ bad_vol,
+    Index_t* bad_vol,
     Int_t const cost,
     Index_t const* regCSR,
     Index_t const* regReps,
@@ -4753,7 +4775,8 @@ __global__ void ApplyMaterialPropertiesAndUpdateVolume_kernel(
     }
 }
 
-static inline void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
+// ab
+void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
 {
     Index_t length = domain->numElem;
 
@@ -4795,7 +4818,8 @@ static inline void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
     }
 }
 
-static inline void LagrangeElements(Domain* domain)
+// ab
+void LagrangeElements(Domain* domain)
 {
     int allElem = domain->numElem + /* local elem */
                   2 * domain->sizeX * domain->sizeY + /* plane ghosts */
@@ -5182,7 +5206,8 @@ __global__ void CalcMinDtOneBlock(
     }
 }
 
-static inline void CalcTimeConstraintsForElems(Domain* domain)
+// ab
+void CalcTimeConstraintsForElems(Domain* domain)
 {
     Real_t qqc = domain->qqc;
     Real_t qqc2 = Real_t(64.0) * qqc * qqc;
@@ -5224,7 +5249,8 @@ static inline void CalcTimeConstraintsForElems(Domain* domain)
     Allocator<Vector_d<Real_t>>::free(dev_mindthydro, dimGrid);
 }
 
-static inline void LagrangeLeapFrog(Domain* domain)
+// ab
+void LagrangeLeapFrog(Domain* domain)
 {
     /* calculate nodal forces, accelerations, velocities, positions, with
      * applied boundary conditions and slide surface considerations */
