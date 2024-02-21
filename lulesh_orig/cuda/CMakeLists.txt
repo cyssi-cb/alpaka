@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.22)
-project(LULESH LANGUAGES CUDA CXX)
+set(_TARGET_NAME lulesh_orig)
+
+project(${_TARGET_NAME} LANGUAGES CUDA CXX)
 
 if(NOT DEFINED CMAKE_CUDA_STANDARD)
-    set(CMAKE_CUDA_STANDARD 11)
+    set(CMAKE_CUDA_STANDARD 17)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 endif()
 
@@ -21,7 +23,10 @@ if (WITH_OPENMP)
 endif()
 
 set(LULESH_SOURCES ./src/allocator.h ./src/allocator.cu ./src/lulesh-comms.cu ./src/lulesh-comms-gpu.cu ./src/lulesh.cu  ./src/lulesh.h ./src/util.h ./src/vector.h)
-set(LULESH_EXEC lulesh2.0)
-add_executable(${LULESH_EXEC} ${LULESH_SOURCES})
-target_link_libraries(${LULESH_EXEC} ${LULESH_EXTERNAL_LIBS})
-set_target_properties(${LULESH_EXEC} PROPERTIES CUDA_ARCHITECTURES "50;60;72")
+add_executable(${_TARGET_NAME} ${LULESH_SOURCES})
+target_link_libraries(
+    ${_TARGET_NAME}
+    PUBLIC alpaka::alpaka)
+set_target_properties(${_TARGET_NAME} PROPERTIES CUDA_ARCHITECTURES "50;60;72")
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
