@@ -1,4 +1,5 @@
 #include <alpaka/alpaka.hpp>
+#include <alpaka/math/MathUniformCudaHipBuiltIn.hpp>
 
 #include <stdint.h>
 
@@ -54,15 +55,17 @@ namespace lulesh_port_kernels
     using Int_t = std::int32_t;
 
     // this needs adjustment when using float
-    ALPAKA_FN_ACC  auto FABS(Real_t arg1)
+    ALPAKA_FN_ACC auto sqrt(Real_t arg1) -> Real_t
     {
-        if(arg1 < 0)
-            return (arg1 * (-1));
-        else
-            return arg1;
+        return alpaka::math::sqrt(alpaka::math::ConceptMathRsqrt(), arg1);
+    };
+
+    ALPAKA_FN_ACC auto FABS(Real_t arg1) -> Real_t
+    {
+        return alpaka::math::abs(alpaka::math::ConceptMathAbs(), arg1);
     }
 
-    ALPAKA_FN_ACC  auto FMAX(Real_t arg1, Real_t arg2) -> Real_t
+    ALPAKA_FN_ACC auto FMAX(Real_t arg1, Real_t arg2) -> Real_t
     {
         return fmax(arg1, arg2);
     }
@@ -355,7 +358,7 @@ namespace lulesh_port_kernels
         return volume;
     }
 
-    ALPAKA_FN_ACC   auto SumElemFaceNormal(
+    ALPAKA_FN_ACC auto SumElemFaceNormal(
         Real_t* normalX0,
         Real_t* normalY0,
         Real_t* normalZ0,
@@ -407,7 +410,7 @@ namespace lulesh_port_kernels
         *normalZ3 += areaZ;
     }
 
-    ALPAKA_FN_ACC   auto VoluDer(
+    ALPAKA_FN_ACC auto VoluDer(
         Real_t const x0,
         Real_t const x1,
         Real_t const x2,
@@ -446,7 +449,7 @@ namespace lulesh_port_kernels
         *dvdz *= twelfth;
     }
 
-    ALPAKA_FN_ACC   auto CalcElemFBHourglassForce(
+    ALPAKA_FN_ACC auto CalcElemFBHourglassForce(
         Real_t* xd,
         Real_t* yd,
         Real_t* zd,
@@ -577,7 +580,7 @@ namespace lulesh_port_kernels
             += coefficient * (hourgam7[i00] * h00 + hourgam7[i01] * h01 + hourgam7[i02] * h02 + hourgam7[i03] * h03);
     }
 
-    ALPAKA_FN_ACC   auto CalcElemNodeNormals(
+    ALPAKA_FN_ACC auto CalcElemNodeNormals(
         Real_t pfx[8],
         Real_t pfy[8],
         Real_t pfz[8],
@@ -749,7 +752,7 @@ namespace lulesh_port_kernels
             z[5]);
     }
 
-    ALPAKA_FN_ACC   auto CalcElemShapeFunctionDerivatives(
+    ALPAKA_FN_ACC auto CalcElemShapeFunctionDerivatives(
         Real_t const* const x,
         Real_t const* const y,
         Real_t const* const z,
@@ -900,12 +903,7 @@ namespace lulesh_port_kernels
         }
     }
 
-    ALPAKA_FN_ACC  auto UpdateVolumesForElems_device(
-        Index_t numElem,
-        Real_t& v_cut,
-        Real_t* vnew,
-        Real_t* v,
-        Index_t i)
+    ALPAKA_FN_ACC auto UpdateVolumesForElems_device(Index_t numElem, Real_t& v_cut, Real_t* vnew, Real_t* v, Index_t i)
     {
         Real_t tmpV;
         tmpV = vnew[i];
@@ -915,7 +913,7 @@ namespace lulesh_port_kernels
         v[i] = tmpV;
     }
 
-    ALPAKA_FN_ACC  auto CalcSoundSpeedForElems_device(
+    ALPAKA_FN_ACC auto CalcSoundSpeedForElems_device(
         Real_t& vnewc,
         Real_t rho0,
         Real_t& enewc,
@@ -939,7 +937,7 @@ namespace lulesh_port_kernels
         ss[iz] = ssTmp;
     }
 
-    ALPAKA_FN_ACC  auto CalcPressureForElems_device(
+    ALPAKA_FN_ACC auto CalcPressureForElems_device(
         Real_t& p_new,
         Real_t& bvc,
         Real_t& pbvc,
@@ -970,7 +968,7 @@ namespace lulesh_port_kernels
         p_new = p_temp;
     }
 
-    ALPAKA_FN_ACC  auto CalcEnergyForElems_device(
+    ALPAKA_FN_ACC auto CalcEnergyForElems_device(
         Real_t& p_new,
         Real_t& e_new,
         Real_t& q_new,
@@ -1103,7 +1101,7 @@ namespace lulesh_port_kernels
         return;
     }
 
-    ALPAKA_FN_ACC  auto CalcHourglassModes(
+    ALPAKA_FN_ACC auto CalcHourglassModes(
         Real_t const xn[8],
         Real_t const yn[8],
         Real_t const zn[8],
@@ -1350,7 +1348,7 @@ namespace lulesh_port_kernels
             &dvdz[7]);
     }
 
-    ALPAKA_FN_ACC  auto giveMyRegion(Index_t const* regCSR, Index_t const i, Index_t const numReg)
+    ALPAKA_FN_ACC auto giveMyRegion(Index_t const* regCSR, Index_t const i, Index_t const numReg)
     {
         for(Index_t reg = 0; reg < numReg - 1; reg++)
             if(i < regCSR[reg])
@@ -1474,7 +1472,7 @@ namespace lulesh_port_kernels
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
             Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
-            Index_t ielem = _cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+            Index_t ielem = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
 
             if(ielem < elength)
             {
@@ -1709,8 +1707,8 @@ namespace lulesh_port_kernels
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
             Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
-            Index_t i = _cast<Index_t>(linearizedGlobalThreadIdx[0u]);
-            Index_t tid = _cast<Index_t>(globalThreadIdx[0u]);
+            Index_t i = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+            Index_t tid = static_cast<Index_t>(globalThreadIdx[0u]);
 
             auto& s_data = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
 
@@ -1909,7 +1907,7 @@ namespace lulesh_port_kernels
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
             Index_t thread_total = globalThreadExtent[0u];
             Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
-            Index_t i = _cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+            Index_t i = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
             Index_t tid = i % block_size;
 
             auto& s_mindthydro = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
@@ -2042,9 +2040,9 @@ namespace lulesh_port_kernels
             // Store in global memory
             if(tid == 0)
             {
-                dev_mindtcourant[_cast<Index_t>((((i % thread_total) + block_size) / block_size) - 1)]
+                dev_mindtcourant[static_cast<Index_t>((((i % thread_total) + block_size) / block_size) - 1)]
                     = s_mindtcourant[0];
-                dev_mindthydro[_cast<Index_t>((((i % thread_total) + block_size) / block_size) - 1)]
+                dev_mindthydro[static_cast<Index_t>((((i % thread_total) + block_size) / block_size) - 1)]
                     = s_mindthydro[0];
             }
         };
@@ -2104,28 +2102,28 @@ namespace lulesh_port_kernels
             Real_t rho0,
             Real_t e_cut,
             Real_t emin,
-            Real_t*  ql,
-            Real_t*  qq,
-            Real_t*  vnew,
-            Real_t*  v,
+            Real_t* ql,
+            Real_t* qq,
+            Real_t* vnew,
+            Real_t* v,
             Real_t pmin,
             Real_t p_cut,
             Real_t q_cut,
             Real_t eosvmin,
             Real_t eosvmax,
-            Index_t*  regElemlist,
+            Index_t* regElemlist,
             //        const Index_t*  regElemlist,
-            Real_t*  e,
-            Real_t*  delv,
-            Real_t*  p,
-            Real_t*  q,
+            Real_t* e,
+            Real_t* delv,
+            Real_t* p,
+            Real_t* q,
             Real_t ss4o3,
-            Real_t*  ss,
+            Real_t* ss,
             Real_t v_cut,
-            Real_t*  constraints,
+            Real_t* constraints,
             Int_t const cost,
-            Index_t const*  regCSR,
-            Index_t const*  regReps,
+            Index_t const* regCSR,
+            Index_t const* regReps,
             Index_t const numReg) const -> void
         {
             /*using Dim = alpaka::Dim<TAcc>;
@@ -2142,7 +2140,8 @@ namespace lulesh_port_kernels
             // Vec1 const linearizedGlobalThreadIdx =
             // alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
             Index_t i = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc)[0];
-            // Index_t i = _cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+
+            // Index_t i = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
 
             Real_t e_old, delvc, p_old, q_old, e_temp, delvc_temp, p_temp, q_temp;
             Real_t compression, compHalfStep;
@@ -2153,7 +2152,8 @@ namespace lulesh_port_kernels
             if(i < length)
             {
                 Index_t zidx = regElemlist[i];
-
+                // printf("tidx in block: %d, blockIdx: %d, globalIdx: %d, Zidx: %d\n ", i % 128, i / 128, i, zidx);
+                // printf("%d,%d,%d,%d\n ", i % 128, i / 128, i, zidx);
                 lulesh_port_kernels::ApplyMaterialPropertiesForElems_device(
                     eosvmin,
                     eosvmax,
@@ -2174,7 +2174,6 @@ namespace lulesh_port_kernels
                 qq_temp = qq[zidx];
                 ql_temp = ql[zidx];
                 delvc_temp = delv[zidx];
-
                 for(int r = 0; r < rep; r++)
                 {
                     e_old = e_temp;
@@ -2236,7 +2235,10 @@ namespace lulesh_port_kernels
                         eosvmax,
                         length);
                 } // end for r
-
+                if(zidx == 1)
+                {
+                    printf("\n\nP_new:: %f\n\n", p_new);
+                }
                 p[zidx] = p_new;
                 e[zidx] = e_new;
                 q[zidx] = q_new;
@@ -2257,6 +2259,7 @@ namespace lulesh_port_kernels
 
                 lulesh_port_kernels::UpdateVolumesForElems_device(length, v_cut, vnew, v, zidx);
             }
+            return;
         };
     };
 
@@ -2265,30 +2268,30 @@ namespace lulesh_port_kernels
         Index_t numNode;
         Real_t deltatime;
         Real_t u_cut;
-        Real_t*  x;
-        Real_t*  y;
-        Real_t*  z;
-        Real_t*  xd;
-        Real_t*  yd;
-        Real_t*  zd;
-        Real_t const*  xdd;
-        Real_t const*  ydd;
-        Real_t const*  zdd;
+        Real_t* x;
+        Real_t* y;
+        Real_t* z;
+        Real_t* xd;
+        Real_t* yd;
+        Real_t* zd;
+        Real_t const* xdd;
+        Real_t const* ydd;
+        Real_t const* zdd;
 
     public:
         CalcPositionAndVelocityForNodes_kernel_class(
             Index_t numNode,
             Real_t const deltatime,
             Real_t const u_cut,
-            Real_t*  x,
-            Real_t*  y,
-            Real_t*  z,
-            Real_t*  xd,
-            Real_t*  yd,
-            Real_t*  zd,
-            Real_t const*  xdd,
-            Real_t const*  ydd,
-            Real_t const*  zdd)
+            Real_t* x,
+            Real_t* y,
+            Real_t* z,
+            Real_t* xd,
+            Real_t* yd,
+            Real_t* zd,
+            Real_t const* xdd,
+            Real_t const* ydd,
+            Real_t const* zdd)
         {
             this->numNode = numNode;
             this->deltatime = deltatime;
@@ -2315,7 +2318,7 @@ namespace lulesh_port_kernels
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
             Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
-            Index_t i = _cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+            Index_t i = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
 
             if(i < numNode)
             {
@@ -2369,7 +2372,7 @@ namespace lulesh_port_kernels
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
             Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
-            Index_t tid = _cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+            Index_t tid = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
 
             if(tid < numNodeBC)
             {
@@ -2420,7 +2423,7 @@ namespace lulesh_port_kernels
 
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
-            Index_t tid = _cast<Index_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+            Index_t tid = static_cast<Index_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
             if(tid < numNode)
             {
                 Real_t one_over_nMass = Real_t(1.) / nodalMass[tid];
@@ -2485,7 +2488,7 @@ namespace lulesh_port_kernels
 
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
-            Int_t tid = _cast<Int_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+            Int_t tid = static_cast<Int_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
 
             if(tid < num_threads)
             {
@@ -2513,7 +2516,7 @@ namespace lulesh_port_kernels
     // TODO: Rewrite this kernel with template parameter
     class CalcVolumeForceForElems_kernel_class
     {
-        Real_t*  volo, *  v, *  p, *  q;
+        Real_t *volo, *v, *p, *q;
         Real_t hourg;
         Index_t numElem;
         Index_t padded_numElem;
@@ -2522,17 +2525,17 @@ namespace lulesh_port_kernels
         Real_t *ss, *x, *y, *z, *xd, *yd, *zd, *fx_elem, *fy_elem, *fz_elem;
 
         Real_t coefficient;
-        Real_t*  constraints; // bad vol index 2
+        Real_t* constraints; // bad vol index 2
         Index_t num_threads;
         bool hour_gt_zero;
 
     public:
         CalcVolumeForceForElems_kernel_class(
 
-            Real_t*  volo,
-            Real_t*  v,
-            Real_t*  p,
-            Real_t*  q,
+            Real_t* volo,
+            Real_t* v,
+            Real_t* p,
+            Real_t* q,
             Real_t hourg,
             Index_t numElem,
             Index_t padded_numElem,
@@ -2600,7 +2603,7 @@ namespace lulesh_port_kernels
 
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
-            Index_t elem = _cast<Index_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+            Index_t elem = static_cast<Index_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
 
             if(elem < num_threads)
             {
@@ -2725,29 +2728,29 @@ namespace lulesh_port_kernels
     {
         Index_t numElem, padded_numElem;
         Real_t const dt;
-        Index_t const*  nodelist;
-        Real_t const*  volo, *  v;
+        Index_t const* nodelist;
+        Real_t const *volo, *v;
 
-        Real_t const*  x;
-        Real_t const*  y;
-        Real_t const*  z;
-        Real_t const*  xd;
-        Real_t const*  yd;
-        Real_t const*  zd;
-        Real_t*  vnew;
-        Real_t*  delv;
+        Real_t const* x;
+        Real_t const* y;
+        Real_t const* z;
+        Real_t const* xd;
+        Real_t const* yd;
+        Real_t const* zd;
+        Real_t* vnew;
+        Real_t* delv;
         Real_t* arealg;
-        Real_t*  dxx;
-        Real_t*  dyy;
-        Real_t*  dzz;
-        Real_t*  vdov;
-        Real_t*  delx_zeta;
-        Real_t*  delv_zeta;
-        Real_t*  delx_xi;
-        Real_t*  delv_xi;
-        Real_t*  delx_eta;
-        Real_t*  delv_eta;
-        Real_t*  constraints;
+        Real_t* dxx;
+        Real_t* dyy;
+        Real_t* dzz;
+        Real_t* vdov;
+        Real_t* delx_zeta;
+        Real_t* delv_zeta;
+        Real_t* delx_xi;
+        Real_t* delv_xi;
+        Real_t* delx_eta;
+        Real_t* delv_eta;
+        Real_t* constraints;
         Index_t const num_threads;
 
     public:
@@ -2755,30 +2758,30 @@ namespace lulesh_port_kernels
             Index_t numElem,
             Index_t padded_numElem,
             Real_t const dt,
-            Index_t const*  nodelist,
-            Real_t const*  volo,
-            Real_t const*  v,
+            Index_t const* nodelist,
+            Real_t const* volo,
+            Real_t const* v,
 
-            Real_t const*  x,
-            Real_t const*  y,
-            Real_t const*  z,
-            Real_t const*  xd,
-            Real_t const*  yd,
-            Real_t const*  zd,
-            Real_t*  vnew,
-            Real_t*  delv,
+            Real_t const* x,
+            Real_t const* y,
+            Real_t const* z,
+            Real_t const* xd,
+            Real_t const* yd,
+            Real_t const* zd,
+            Real_t* vnew,
+            Real_t* delv,
             Real_t* arealg,
-            Real_t*  dxx,
-            Real_t*  dyy,
-            Real_t*  dzz,
-            Real_t*  vdov,
-            Real_t*  delx_zeta,
-            Real_t*  delv_zeta,
-            Real_t*  delx_xi,
-            Real_t*  delv_xi,
-            Real_t*  delx_eta,
-            Real_t*  delv_eta,
-            Real_t*  constraints,
+            Real_t* dxx,
+            Real_t* dyy,
+            Real_t* dzz,
+            Real_t* vdov,
+            Real_t* delx_zeta,
+            Real_t* delv_zeta,
+            Real_t* delx_xi,
+            Real_t* delv_xi,
+            Real_t* delx_eta,
+            Real_t* delv_eta,
+            Real_t* constraints,
             Index_t const num_threads)
             : numElem(numElem)
             , padded_numElem(padded_numElem)
@@ -2827,7 +2830,7 @@ namespace lulesh_port_kernels
 
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
-            Index_t k = _cast<Index_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+            Index_t k = static_cast<Index_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
 
             if(k < num_threads)
             {

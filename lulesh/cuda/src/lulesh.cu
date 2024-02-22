@@ -98,12 +98,12 @@ Additional BSD Notice
 /* Allow flexibility for arithmetic representations */
 /****************************************************/
 
-__device__ inline __host__ real4 FABS(real4 arg)
+inline __device__ __host__ real4 FABS(real4 arg)
 {
     return fabsf(arg);
 }
 
-__device__ inline __host__ real8 FABS(real8 arg)
+inline __device__ __host__ real8 FABS(real8 arg)
 {
     return fabs(arg);
 }
@@ -181,14 +181,14 @@ void SumOverNodes(Real_t& val, volatile Real_t* smem, int cta_elem, int node) {
 }
 */
 
- __device__ __forceinline__ void SumOverNodesShfl(Real_t& val)
+__device__ __forceinline__ void SumOverNodesShfl(Real_t& val)
 {
     val += utils::shfl_xor(val, 4, 8);
     val += utils::shfl_xor(val, 2, 8);
     val += utils::shfl_xor(val, 1, 8);
 }
 
-__host__  __device__ __forceinline__ Real_t CalcElemVolume(
+__host__ __device__ __forceinline__ Real_t CalcElemVolume(
     Real_t const x0,
     Real_t const x1,
     Real_t const x2,
@@ -279,8 +279,7 @@ __host__  __device__ __forceinline__ Real_t CalcElemVolume(
     return volume;
 }
 
-__host__  __device__ __forceinline__ Real_t
-CalcElemVolume(Real_t const x[8], Real_t const y[8], Real_t const z[8])
+__host__ __device__ __forceinline__ Real_t CalcElemVolume(Real_t const x[8], Real_t const y[8], Real_t const z[8])
 {
     return CalcElemVolume(
         x[0],
@@ -1297,7 +1296,7 @@ void Domain::sortRegions(Vector_h<Int_t>& regReps_h, Vector_h<Index_t>& regSorte
 }
 
 // simple function for int pow x^y, y >= 0
- Int_t POW(Int_t x, Int_t y)
+Int_t POW(Int_t x, Int_t y)
 {
     Int_t res = 1;
     for(Int_t i = 0; i < y; i++)
@@ -1463,7 +1462,7 @@ void Domain::CreateRegionIndexSets(Int_t nr, Int_t b)
 
 } // end of create function
 
- inline void TimeIncrement(Domain* domain)
+inline void TimeIncrement(Domain* domain)
 {
     // To make sure dtcourant and dthydro have been updated on host
     Real_t targetdt = domain->stoptime - domain->time_h;
@@ -1529,7 +1528,7 @@ void Domain::CreateRegionIndexSets(Int_t nr, Int_t b)
     ++domain->cycle;
 }
 
- inline void CalcVolumeForceForElems(Real_t const hgcoef, Domain* domain)
+inline void CalcVolumeForceForElems(Real_t const hgcoef, Domain* domain)
 {
     Index_t numElem = domain->numElem;
     Index_t padded_numElem = domain->padded_numElem;
@@ -1712,7 +1711,7 @@ void Domain::CreateRegionIndexSets(Int_t nr, Int_t b)
     return;
 };
 
- inline void CalcVolumeForceForElems(Domain* domain)
+inline void CalcVolumeForceForElems(Domain* domain)
 {
     Real_t const hgcoef = domain->hgcoef;
 
@@ -1722,7 +1721,7 @@ void Domain::CreateRegionIndexSets(Int_t nr, Int_t b)
     // CalcVolumeForceForElems_warp_per_4cell(hgcoef,domain);
 };
 
- inline void checkErrors(Domain* domain, int its, int myRank)
+inline void checkErrors(Domain* domain, int its, int myRank)
 {
     auto bad_vol = domain->constraints_h[2];
     auto bad_q = domain->constraints_h[3];
@@ -1739,7 +1738,7 @@ void Domain::CreateRegionIndexSets(Int_t nr, Int_t b)
     }
 }
 
- inline void CalcForceForNodes(Domain* domain)
+inline void CalcForceForNodes(Domain* domain)
 {
 #if USE_MPI
     CommRecv(*domain, MSG_COMM_SBN, 3, domain->sizeX + 1, domain->sizeY + 1, domain->sizeZ + 1, true, false);
@@ -1796,10 +1795,10 @@ __global__ void CalcAccelerationForNodes_kernel(
     }
 }
 
- inline void CalcAccelerationForNodes(Domain* domain)
+inline void CalcAccelerationForNodes(Domain* domain)
 {
     int const dimBlock = 128;
-    int dimGrid = PAD_DIV(_cast<int>(domain->numNode), dimBlock);
+    int dimGrid = PAD_DIV(static_cast<int>(domain->numNode), dimBlock);
     // cudaCheckError();
 
 #ifdef ALPAKA
@@ -1842,7 +1841,7 @@ __global__ void ApplyAccelerationBoundaryConditionsForNodes_kernel(int numNodeBC
     }
 }
 
- inline void ApplyAccelerationBoundaryConditionsForNodes(Domain* domain)
+inline void ApplyAccelerationBoundaryConditionsForNodes(Domain* domain)
 {
     Index_t dimBlock = 128;
 
@@ -1965,7 +1964,7 @@ __global__ void CalcPositionAndVelocityForNodes_kernel(
     }
 }
 
- inline void CalcPositionAndVelocityForNodes(Real_t const u_cut, Domain* domain)
+inline void CalcPositionAndVelocityForNodes(Real_t const u_cut, Domain* domain)
 {
     Index_t dimBlock = 128;
     Index_t dimGrid = PAD_DIV(domain->numNode, dimBlock);
@@ -2012,7 +2011,7 @@ __global__ void CalcPositionAndVelocityForNodes_kernel(
     // cudaCheckError();
 }
 
- inline void LagrangeNodal(Domain* domain)
+inline void LagrangeNodal(Domain* domain)
 {
 #ifdef SEDOV_SYNC_POS_VEL_EARLY
     Domain_member fieldData[6];
@@ -2065,7 +2064,7 @@ printf(
   return;
 }
 
- inline void CalcKinematicsAndMonotonicQGradient(Domain* domain)
+inline void CalcKinematicsAndMonotonicQGradient(Domain* domain)
 {
     Index_t numElem = domain->numElem;
     Index_t padded_numElem = domain->padded_numElem;
@@ -2147,7 +2146,7 @@ printf(
 #endif
 }
 
- inline void CalcMonotonicQRegionForElems(Domain* domain)
+inline void CalcMonotonicQRegionForElems(Domain* domain)
 {
     Real_t const ptiny = Real_t(1.e-36);
     Real_t monoq_max_slope = domain->monoq_max_slope;
@@ -2232,16 +2231,162 @@ printf(
     // cudaCheckError();
 }
 
- inline void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
+std::vector<std::string> data;
+int globalDataIndex = 0;
+
+template<typename T>
+void writeOut(T vec, std::string name)
+{
+    for(int i = 0; i < vec.size(); i++)
+    {
+        if(data[globalDataIndex] != std::to_string(vec[i]))
+        {
+            std::cout << "failure reading vec at " << i << " here " << std::to_string(vec[i])
+                      << " lulesh:" << data[globalDataIndex] << "in file " << name << std::endl;
+        }
+        globalDataIndex++;
+    }
+}
+
+void read_data()
+{
+    std::ifstream inputFile("/home/tim/Studium/Alpaka_Project/value_compare.txt");
+
+    if(inputFile.is_open())
+    {
+        std::string value;
+        while(inputFile >> value)
+        {
+            data.push_back(value);
+        }
+        inputFile.close();
+        std::cout << "Data has been read from " << std::endl;
+    }
+    else
+    {
+        std::cerr << "Unable to open file: " << std::endl;
+    }
+}
+
+template<typename T>
+void writeOutwriteOutWord(T word, std::string name)
+{
+    if(data[globalDataIndex] != std::to_string(word))
+    {
+        std::cout << "failure reading word here" << std::to_string(word) << " lulesh: " << data[globalDataIndex]
+                  << "in file " << name << std::endl;
+    }
+    globalDataIndex++;
+}
+
+template<typename T>
+Vector_h<T> vector_h(Vector_d<T>& v)
+{
+    Vector_h<T> neu(v);
+    neu = v;
+    return std::move(neu);
+}
+
+void CheckErrorApply(
+
+    Index_t length,
+    Real_t rho0,
+    Real_t e_cut,
+    Real_t emin,
+    Vector_d<Real_t>& ql,
+    Vector_d<Real_t>& qq,
+    Vector_d<Real_t>& vnew,
+    Vector_d<Real_t>& v,
+    Real_t pmin,
+    Real_t p_cut,
+    Real_t q_cut,
+    Real_t eosvmin,
+    Real_t eosvmax,
+    Vector_d<Index_t>& regElemlist,
+    //        const Index_t*  regElemlist,
+    Vector_d<Real_t>& e,
+    Vector_d<Real_t>& delv,
+    Vector_d<Real_t>& p,
+    Vector_d<Real_t>& q,
+    Real_t ss4o3,
+    Vector_d<Real_t>& ss,
+    Real_t v_cut,
+    Index_t bad_vol,
+    Int_t const cost,
+    Vector_d<Index_t>& regCSR,
+    Vector_d<Index_t>& regReps,
+    Index_t const numReg)
+{
+    writeOut(Vector_h<Real_t>(ql), "ql");
+    writeOut(Vector_h<Real_t>(qq), "qq");
+    writeOut(Vector_h<Real_t>(vnew), "vnew");
+    writeOut(Vector_h<Real_t>(v), "v");
+    writeOut(Vector_h<Index_t>(regElemlist), "regElemlist");
+    writeOut(Vector_h<Real_t>(e), "e");
+    writeOut(Vector_h<Real_t>(delv), "delv");
+    writeOut(Vector_h<Real_t>(p), "p");
+    writeOut(Vector_h<Real_t>(q), "q");
+    writeOut(Vector_h<Real_t>(ss), "ss");
+    writeOut(Vector_h<Index_t>(regCSR), "regCSR");
+    writeOut(Vector_h<Index_t>(regReps), "regReps");
+    writeOutwriteOutWord(length, "length");
+    writeOutwriteOutWord(rho0, "rho0");
+    writeOutwriteOutWord(e_cut, "e_cut");
+    writeOutwriteOutWord(emin, "emin");
+    writeOutwriteOutWord(pmin, "pmin");
+    writeOutwriteOutWord(bad_vol, "bad_vol");
+    writeOutwriteOutWord(p_cut, "p_cut");
+    writeOutwriteOutWord(eosvmin, "eosvmin");
+    writeOutwriteOutWord(eosvmax, "eosvmax");
+    writeOutwriteOutWord(ss4o3, "ss4o3");
+    writeOutwriteOutWord(v_cut, "v_cut");
+    writeOutwriteOutWord(cost, "cost");
+    writeOutwriteOutWord(numReg, "numReg");
+}
+
+void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
 {
     Index_t length = domain->numElem;
-
+    static int iter = 0;
     if(length != 0)
     {
         Index_t dimBlock = 128;
         Index_t dimGrid = PAD_DIV(length, dimBlock);
 
 #ifdef ALPAKA
+        Vector_h constraints_h(domain->constraints_d);
+        if(iter == 1)
+        {
+            read_data();
+
+            CheckErrorApply(
+                length,
+                domain->refdens,
+                domain->e_cut,
+                domain->emin,
+                domain->ql, // dev
+                domain->qq, // dev
+                *domain->vnew, // dev,
+                domain->v, // dev,
+                domain->pmin,
+                domain->p_cut,
+                domain->q_cut,
+                domain->eosvmin,
+                domain->eosvmax,
+                domain->regElemlist, // dev,
+                domain->e, // dev,
+                *domain->delv_eta, // dev,
+                domain->p, // dev,
+                domain->q, // dev,
+                domain->ss4o3,
+                domain->ss, // dev,
+                domain->v_cut,
+                domain->constraints_h[2], // dev,
+                domain->cost,
+                domain->regCSR, // dev,
+                domain->regReps, // dev,
+                domain->numReg);
+        }
         using ApplyMaterialPropertiesAndUpdateVolume
             = lulesh_port_kernels::ApplyMaterialPropertiesAndUpdateVolume_kernel_class;
         // cudaCheckError();
@@ -2262,25 +2407,60 @@ printf(
             domain->ql.raw(),
             domain->qq.raw(),
             domain->vnew->raw(),
-            domain->v.raw(),
+            domain->v.raw(), // error
             domain->pmin,
             domain->p_cut,
             domain->q_cut,
             domain->eosvmin,
             domain->eosvmax,
             domain->regElemlist.raw(),
-            domain->e.raw(),
+            domain->e.raw(), // error
             domain->delv.raw(),
-            domain->p.raw(),
-            domain->q.raw(),
+            domain->p.raw(), // error
+            domain->q.raw(), // error
             domain->ss4o3,
-            domain->ss.raw(),
+            domain->ss.raw(), // error
             domain->v_cut,
             domain->constraints_d.raw(),
             domain->cost,
             domain->regCSR.raw(),
             domain->regReps.raw(),
             domain->numReg);
+        constraints_h = domain->constraints_d;
+        if(iter == 1)
+        {
+            std::cout << std::endl;
+            std::cout << " aft " << std::endl;
+            std::cout << std::endl;
+            CheckErrorApply(
+                length,
+                domain->refdens,
+                domain->e_cut,
+                domain->emin,
+                domain->ql, // dev
+                domain->qq, // dev
+                *domain->vnew, // dev,
+                domain->v, // dev,
+                domain->pmin,
+                domain->p_cut,
+                domain->q_cut,
+                domain->eosvmin,
+                domain->eosvmax,
+                domain->regElemlist, // dev,
+                domain->e, // dev,
+                *domain->delv_eta, // dev,
+                domain->p, // dev,
+                domain->q, // dev,
+                domain->ss4o3,
+                domain->ss, // dev,
+                domain->v_cut,
+                domain->constraints_h[2], // dev,
+                domain->cost,
+                domain->regCSR, // dev,
+                domain->regReps, // dev,
+                domain->numReg);
+        }
+        iter++;
 
 #else
 
@@ -2317,7 +2497,7 @@ printf(
     }
 }
 
- inline void LagrangeElements(Domain* domain)
+inline void LagrangeElements(Domain* domain)
 {
     int allElem = domain->numElem + /* local elem */
                   2 * domain->sizeX * domain->sizeY + /* plane ghosts */
@@ -2702,7 +2882,7 @@ __global__ void CalcMinDtOneBlock(
     }
 }
 
- inline void CalcTimeConstraintsForElems(Domain* domain)
+inline void CalcTimeConstraintsForElems(Domain* domain)
 {
     Real_t qqc = domain->qqc;
     Real_t qqc2 = Real_t(64.0) * qqc * qqc;
@@ -2790,7 +2970,7 @@ __global__ void CalcMinDtOneBlock(
     Allocator<Vector_d<Real_t>>::free(dev_mindthydro, dimGrid);
 }
 
- inline void LagrangeLeapFrog(Domain* domain)
+inline void LagrangeLeapFrog(Domain* domain)
 {
     /* calculate nodal forces, accelerations, velocities, positions, with
      * applied boundary conditions and slide surface considerations */

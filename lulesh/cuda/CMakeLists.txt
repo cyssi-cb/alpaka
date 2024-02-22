@@ -42,7 +42,7 @@ target_link_libraries(
     PUBLIC alpaka::alpaka)
 
 set_target_properties(${_TARGET_NAME} PROPERTIES FOLDER lulesh)
-set_target_properties(${_TARGET_NAME} PROPERTIES CUDA_ARCHITECTURES "50;72")
+set_target_properties(${_TARGET_NAME} PROPERTIES CUDA_ARCHITECTURES "60")
 
 cmake_minimum_required(VERSION 3.22)
 
