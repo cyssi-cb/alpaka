@@ -2239,6 +2239,9 @@ void writeOut(T vec, std::string name)
 {
     for(int i = 0; i < vec.size(); i++)
     {
+        if(name=="delv"&&i==1000){
+            std::cout<<vec[i]<<std::endl;
+        }
         if(data[globalDataIndex] != std::to_string(vec[i]))
         {
             std::cout << "failure reading vec at " << i << " here " << std::to_string(vec[i])
@@ -2266,16 +2269,21 @@ void read_data()
     {
         std::cerr << "Unable to open file: " << std::endl;
     }
+    std::cout<<" size of Data "<<data.size()<<std::endl;
 }
 
 template<typename T>
 void writeOutwriteOutWord(T word, std::string name)
 {
+    bool correct=true;
     if(data[globalDataIndex] != std::to_string(word))
     {
         std::cout << "failure reading word here" << std::to_string(word) << " lulesh: " << data[globalDataIndex]
                   << "in file " << name << std::endl;
+        correct=false;
     }
+    if(correct)std::cout<<" data correct for "<<name<<std::endl;
+
     globalDataIndex++;
 }
 
@@ -2350,21 +2358,51 @@ void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
     static int iter = 0;
     if(length != 0)
     {
+        #define ITER 2
         Index_t dimBlock = 128;
         Index_t dimGrid = PAD_DIV(length, dimBlock);
-
+#define AlPAKA
 #ifdef ALPAKA
         Vector_h constraints_h(domain->constraints_d);
-        {
             using ApplyMaterialPropertiesAndUpdateVolume
                 = lulesh_port_kernels::ApplyMaterialPropertiesAndUpdateVolume_kernel_class;
             // cudaCheckError();
             ApplyMaterialPropertiesAndUpdateVolume ApplyMaterialPropertiesAndUpdateVolumeKernel;
-
             using Dim2 = alpaka::DimInt<2>;
             using Idx = std::size_t;
             using Vec2 = alpaka::Vec<Dim2, Idx>;
-            // cudaCheckError();
+            if(iter==ITER){
+                cudaCheckError();
+                            read_data();
+                CheckErrorApply(
+                    length,
+                    domain->refdens,
+                    domain->e_cut,
+                    domain->emin,
+                    domain->ql, // dev
+                    domain->qq, // dev
+                    *domain->vnew, // dev,
+                    domain->v, // dev,
+                    domain->pmin,
+                    domain->p_cut,
+                    domain->q_cut,
+                    domain->eosvmin,
+                    domain->eosvmax,
+                    domain->regElemlist, // dev,
+                    domain->e, // dev,
+                    domain->delv, // dev,
+                    domain->p, // dev,
+                    domain->q, // dev,
+                    domain->ss4o3,
+                    domain->ss, // dev,
+                    domain->v_cut,
+                    domain->constraints_h[2], // dev,
+                    domain->cost,
+                    domain->regCSR, // dev,
+                    domain->regReps, // dev,
+                    domain->numReg);
+                cudaCheckError();
+            }
             alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
                 ApplyMaterialPropertiesAndUpdateVolumeKernel,
                 Vec2{dimBlock, dimGrid},
@@ -2396,39 +2434,12 @@ void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
                 domain->regReps.raw(),
                 domain->numReg);
             constraints_h = domain->constraints_d;
-            if(iter == 1)
-            {
-                std::cout << std::endl;
-                std::cout << " aft " << std::endl;
-                std::cout << std::endl;
-                CheckErrorApply(
-                    length,
-                    domain->refdens,
-                    domain->e_cut,
-                    domain->emin,
-                    domain->ql, // dev
-                    domain->qq, // dev
-                    *domain->vnew, // dev,
-                    domain->v, // dev,
-                    domain->pmin,
-                    domain->p_cut,
-                    domain->q_cut,
-                    domain->eosvmin,
-                    domain->eosvmax,
-                    domain->regElemlist, // dev,
-                    domain->e, // dev,
-                    *domain->delv_eta, // dev,
-                    domain->p, // dev,
-                    domain->q, // dev,
-                    domain->ss4o3,
-                    domain->ss, // dev,
-                    domain->v_cut,
-                    domain->constraints_h[2], // dev,
-                    domain->cost,
-                    domain->regCSR, // dev,
-                    domain->regReps, // dev,
-                    domain->numReg);
-            }
+            cudaCheckError();
+
+            std::cout << std::endl;
+            std::cout << " aft " << std::endl;
+
+            std::cout<<" next iteration"<<std::endl;
             iter++;
 
 #else
@@ -3379,7 +3390,7 @@ void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
     gettimeofday(&start, NULL);
 #endif
 
-        while(locDom->time_h < locDom->stoptime)
+        while(true)
         {
             // this has been moved after computation of volume forces to hide launch
             // latencies

@@ -2235,10 +2235,6 @@ namespace lulesh_port_kernels
                         eosvmax,
                         length);
                 } // end for r
-                if(zidx == 1)
-                {
-                    printf("\n\nP_new:: %f\n\n", p_new);
-                }
                 p[zidx] = p_new;
                 e[zidx] = e_new;
                 q[zidx] = q_new;

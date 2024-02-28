@@ -200,7 +200,25 @@ void SumOverNodes(Real_t& val, volatile Real_t* smem, int cta_elem, int node) {
 }
 */
 template<typename T>
-void write(Vector_d<T>& vec, std::ofstream& file)
+void writeOutwriteOutWord(T& word, std::ofstream& file)
+{
+    if(file.is_open())
+    {
+        // Write the vector elements to the file
+
+        file << std::to_string(word) << ' ';
+
+        // Close the file
+
+        std::cout << "Vector successfully written to file." << std::endl;
+    }
+    else
+    {
+        std::cout << "Unable to open the file." << std::endl;
+    }
+}
+template<typename T>
+void writeOut(Vector_d<T>& vec, std::ofstream& file)
 {
     Vector_h<T> l(vec);
     if(file.is_open())
@@ -3135,7 +3153,66 @@ __global__ void CalcVolumeForceForElems_kernel_warp_per_4cell(
 
     } // If elem < numElem
 }
+void write_to_file(Domain* domain){
+    std::ofstream inFile("/home/tim/Studium/Alpaka_Project/value_compare.txt", std::ios::app);
+     /*
+      Index_t length,
+    Real_t rho0,
+    Real_t e_cut,
+    Real_t emin,
+    Vector_d<Real_t>& ql,
+    Vector_d<Real_t>& qq,
+    Vector_d<Real_t>& vnew,
+    Vector_d<Real_t>& v,
+    Real_t pmin,
+    Real_t p_cut,
+    Real_t q_cut,
+    Real_t eosvmin,
+    Real_t eosvmax,
+    Vector_d<Index_t>& regElemlist,
+    //        const Index_t*  regElemlist,
+    Vector_d<Real_t>& e,
+    Vector_d<Real_t>& delv,
+    Vector_d<Real_t>& p,
+    Vector_d<Real_t>& q,
+    Real_t ss4o3,
+    Vector_d<Real_t>& ss,
+    Real_t v_cut,
+    Index_t bad_vol,
+    Int_t const cost,
+    Vector_d<Index_t>& regCSR,
+    Vector_d<Index_t>& regReps,
+    Index_t const numReg)*/
+    Index_t length = domain->numElem;
+    writeOut(domain->ql, inFile);
+    writeOut(domain->qq, inFile);
+    writeOut(*domain->vnew, inFile);
+    writeOut(domain->v, inFile);
+    writeOut(domain->regElemlist, inFile);
+    writeOut(domain->e, inFile);
+    writeOut(domain->delv, inFile);
+    writeOut(domain->p, inFile);
+    writeOut(domain->q, inFile);
+    writeOut(domain->ss, inFile);
+    writeOut(domain->regCSR, inFile);
+    writeOut(domain->regReps, inFile);
+    writeOutwriteOutWord(length, inFile);
+    writeOutwriteOutWord(domain->refdens, inFile);
+    writeOutwriteOutWord(domain->e_cut, inFile);
+    writeOutwriteOutWord(domain->emin, inFile);
+    writeOutwriteOutWord(domain->pmin, inFile);
+    writeOutwriteOutWord(*domain->bad_vol_h, inFile);
+    writeOutwriteOutWord(domain->p_cut, inFile);
+    writeOutwriteOutWord(domain->eosvmin, inFile);
+    writeOutwriteOutWord(domain->eosvmax, inFile);
+    writeOutwriteOutWord(domain->ss4o3, inFile);
+    writeOutwriteOutWord(domain->v_cut, inFile);
+    writeOutwriteOutWord(domain->cost, inFile);
+    writeOutwriteOutWord(domain->numReg, inFile);
 
+     inFile.close();
+     exit(1);
+}
 // ab
 void CalcVolumeForceForElems(Real_t const hgcoef, Domain* domain)
 {
@@ -3219,26 +3296,7 @@ void CalcVolumeForceForElems(Real_t const hgcoef, Domain* domain)
             domain->bad_vol_h,
             num_threads);
     }
-    /* std::ofstream inFile("../../../CalcVolumeForceForElems_kernel.txt");
-     write(domain->volo,inFile);
-     write(domain->v,inFile);
-     write(domain->p,inFile);
-     write(domain->q,inFile);
-     write(domain->nodelist,inFile);
-     write(domain->ss,inFile);
-     write(domain->elemMass,inFile);
-     write(domain->x,inFile);
-     write(domain->y,inFile);
-     write(domain->z,inFile);
-     write(domain->xd,inFile);
-     write(domain->yd,inFile);
-     write(domain->zd,inFile);
-     write(*fx_elem,inFile);
-     write(*fy_elem,inFile);
-     write(*fz_elem,inFile);
 
-     inFile.close();
-     exit(1);*/
 
 
 #ifdef DOUBLE_PRECISION
@@ -4610,8 +4668,10 @@ __device__ Index_t giveMyRegion(Index_t const* regCSR, Index_t const i, Index_t 
 void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
 {
     Index_t length = domain->numElem;
+    static int iter=0;
     if(length != 0)
     {
+        #define ITER 2
         Index_t dimBlock = 128;
         Index_t dimGrid = PAD_DIV(length, dimBlock);
         using ApplyMaterialPropertiesAndUpdateVolume
@@ -4622,8 +4682,11 @@ void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
         using Dim2 = alpaka::DimInt<2>;
         using Idx = std::size_t;
         using Vec2 = alpaka::Vec<Dim2, Idx>;
-        // cudaCheckError();
-        cudaDeviceSynchronize();
+        if(iter==ITER){
+            cudaCheckError();
+            write_to_file(domain);
+            cudaDeviceSynchronize();
+        }
         alpakaExecuteBaseKernel<Dim2, Idx>(
             ApplyMaterialPropertiesAndUpdateVolumeKernel,
             Vec2{dimBlock, dimGrid},
@@ -4656,6 +4719,7 @@ void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
             domain->numReg);
         cudaDeviceSynchronize();
         cudaCheckError();
+        iter++;
         // cudaDeviceSynchronize();
     }
 }
@@ -5528,7 +5592,7 @@ int main(int argc, char* argv[])
     gettimeofday(&start, NULL);
 #endif
 
-    while(locDom->time_h < locDom->stoptime)
+    while(true)
     {
         // this has been moved after computation of volume forces to hide launch latencies
         // TimeIncrement(locDom) ;
