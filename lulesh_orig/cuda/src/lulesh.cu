@@ -81,6 +81,7 @@ Additional BSD Notice
 // #include <mpi.h>
 #endif
 
+#include "kernel.h"
 #include "lulesh.h"
 
 #include <sys/time.h>
@@ -4448,47 +4449,6 @@ __device__ // ab
     ss[iz] = ssTmp;
 }
 
-__device__ void ApplyMaterialPropertiesForElems_device(
-    Real_t& eosvmin,
-    Real_t& eosvmax,
-    Real_t* vnew,
-    Real_t* v,
-    Real_t& vnewc,
-    Index_t* bad_vol,
-    Index_t zn)
-{
-    vnewc = vnew[zn];
-
-    if(eosvmin != Real_t(0.))
-    {
-        if(vnewc < eosvmin)
-            vnewc = eosvmin;
-    }
-
-    if(eosvmax != Real_t(0.))
-    {
-        if(vnewc > eosvmax)
-            vnewc = eosvmax;
-    }
-
-    // Now check for valid volume
-    Real_t vc = v[zn];
-    if(eosvmin != Real_t(0.))
-    {
-        if(vc < eosvmin)
-            vc = eosvmin;
-    }
-    if(eosvmax != Real_t(0.))
-    {
-        if(vc > eosvmax)
-            vc = eosvmax;
-    }
-    if(vc <= 0.)
-    {
-        *bad_vol = zn;
-    }
-}
-
 __device__
     // ab
     void
@@ -4647,296 +4607,27 @@ __device__ Index_t giveMyRegion(Index_t const* regCSR, Index_t const i, Index_t 
     return (numReg - 1);
 }
 
-__global__ void ApplyMaterialPropertiesAndUpdateVolume_kernel(
-    Index_t length,
-    Real_t rho0,
-    Real_t e_cut,
-    Real_t emin,
-    Real_t* ql,
-    Real_t* qq,
-    Real_t* vnew,
-    Real_t* v,
-    Real_t pmin,
-    Real_t p_cut,
-    Real_t q_cut,
-    Real_t eosvmin,
-    Real_t eosvmax,
-    Index_t* regElemlist,
-    //        const Index_t*  regElemlist,
-    Real_t* e,
-    Real_t* delv,
-    Real_t* p,
-    Real_t* q,
-    Real_t ss4o3,
-    Real_t* ss,
-    Real_t v_cut,
-    Index_t* bad_vol,
-    Int_t const cost,
-    Index_t const* regCSR,
-    Index_t const* regReps,
-    Index_t const numReg)
-{
-    Real_t e_old, delvc, p_old, q_old, e_temp, delvc_temp, p_temp, q_temp;
-    Real_t compression, compHalfStep;
-    Real_t qq_old, ql_old, qq_temp, ql_temp, work;
-    Real_t p_new, e_new, q_new;
-    Real_t bvc, pbvc, vnewc;
-
-    Index_t i = blockDim.x * blockIdx.x + threadIdx.x;
-
-
-    if(i < length)
-    {
-        Index_t zidx = regElemlist[i];
-        // printf("tidx in block: %d, blockIdx: %d, globalIdx: %d, Zidx: %d \n ", threadIdx.x, blockIdx.x, i, zidx);
-        // printf("%d,%d,%d,%d\n ", threadIdx.x, blockIdx.x, i, zidx);
-        ApplyMaterialPropertiesForElems_device(eosvmin, eosvmax, vnew, v, vnewc, bad_vol, zidx);
-        /********************** Start EvalEOSForElems   **************************/
-        // Here we need to find out what region this element belongs to and what is the rep value!
-        Index_t region = giveMyRegion(regCSR, i, numReg);
-        Index_t rep = regReps[region];
-
-        e_temp = e[zidx];
-        p_temp = p[zidx];
-        q_temp = q[zidx];
-        qq_temp = qq[zidx];
-        ql_temp = ql[zidx];
-        delvc_temp = delv[zidx];
-        // printf("%d reps; \n", e[0]);
-        for(int r = 0; r < rep; r++)
-        {
-            e_old = e_temp;
-            p_old = p_temp;
-            q_old = q_temp;
-            qq_old = qq_temp;
-            ql_old = ql_temp;
-            delvc = delvc_temp;
-            work = Real_t(0.);
-
-            Real_t vchalf;
-            compression = Real_t(1.) / vnewc - Real_t(1.);
-            vchalf = vnewc - delvc * Real_t(.5);
-            compHalfStep = Real_t(1.) / vchalf - Real_t(1.);
-
-            if(eosvmin != Real_t(0.))
-            {
-                if(vnewc <= eosvmin)
-                { /* impossible due to calling func? */
-                    compHalfStep = compression;
-                }
-            }
-            if(eosvmax != Real_t(0.))
-            {
-                if(vnewc >= eosvmax)
-                { /* impossible due to calling func? */
-                    p_old = Real_t(0.);
-                    compression = Real_t(0.);
-                    compHalfStep = Real_t(0.);
-                }
-            }
-
-            //    qq_old = qq[zidx] ;
-            //    ql_old = ql[zidx] ;
-            //    work = Real_t(0.) ;
-
-            CalcEnergyForElems_device(
-                p_new,
-                e_new,
-                q_new,
-                bvc,
-                pbvc,
-                p_old,
-                e_old,
-                q_old,
-                compression,
-                compHalfStep,
-                vnewc,
-                work,
-                delvc,
-                pmin,
-                p_cut,
-                e_cut,
-                q_cut,
-                emin,
-                qq_old,
-                ql_old,
-                rho0,
-                eosvmax,
-                length);
-        } // end for rep
-        if(zidx == 1)
-        {
-            printf("\n\nP_new:: %f\n\n", p_new);
-        }
-        p[zidx] = p_new;
-        e[zidx] = e_new;
-        q[zidx] = q_new;
-
-        CalcSoundSpeedForElems_device(vnewc, rho0, e_new, p_new, pbvc, bvc, ss4o3, length, ss, zidx);
-
-        /********************** End EvalEOSForElems     **************************/
-
-        UpdateVolumesForElems_device(length, v_cut, vnew, v, zidx);
-    }
-}
-
-template<typename T>
-void writeOut(T vec)
-{
-    std::ofstream outputFile("/home/tim/Studium/Alpaka_Project/value_compare.txt", std::ios::app);
-    if(outputFile.is_open())
-    {
-        for(int i = 0; i < vec.size(); i++)
-        {
-            outputFile << std::to_string(vec[i]) << " ";
-        }
-        outputFile.close();
-    }
-    else
-    {
-        std::cerr << "Unable to open file: " << std::endl;
-    }
-    outputFile << "\n";
-}
-
-void clear()
-{
-    std::ofstream outputFile("/home/tim/Studium/Alpaka_Project/value_compare.txt", std::ios::trunc);
-    if(outputFile.is_open())
-    {
-        // File is now empty
-        outputFile.close(); // Close the file
-    }
-    else
-    {
-        std::cerr << "Unable to open file: " << std::endl;
-        return;
-    }
-}
-
-template<typename T>
-void writeOutwriteOutWord(T word)
-{
-    std::ofstream outputFile("/home/tim/Studium/Alpaka_Project/value_compare.txt", std::ios::app);
-    if(outputFile.is_open())
-    {
-        outputFile << std::to_string(word) << " ";
-        outputFile.close();
-        std::cout << "Vector data has been written to " << std::endl;
-    }
-    else
-    {
-        std::cerr << "Unable to open file: " << std::endl;
-    }
-
-    outputFile << "\n";
-}
-
-template<typename T>
-Vector_h<T> vector_h(Vector_d<T>& v)
-{
-    Vector_h<T> neu(v);
-    neu = v;
-    return std::move(neu);
-}
-
-void CheckErrorApply(
-
-    Index_t length,
-    Real_t rho0,
-    Real_t e_cut,
-    Real_t emin,
-    Vector_d<Real_t>& ql,
-    Vector_d<Real_t>& qq,
-    Vector_d<Real_t>& vnew,
-    Vector_d<Real_t>& v,
-    Real_t pmin,
-    Real_t p_cut,
-    Real_t q_cut,
-    Real_t eosvmin,
-    Real_t eosvmax,
-    Vector_d<Index_t>& regElemlist,
-    //        const Index_t*  regElemlist,
-    Vector_d<Real_t>& e,
-    Vector_d<Real_t>& delv,
-    Vector_d<Real_t>& p,
-    Vector_d<Real_t>& q,
-    Real_t ss4o3,
-    Vector_d<Real_t>& ss,
-    Real_t v_cut,
-    Index_t* bad_vol,
-    Int_t const cost,
-    Vector_d<Index_t>& regCSR,
-    Vector_d<Index_t>& regReps,
-    Index_t const numReg)
-{
-    writeOut(vector_h(ql));
-    writeOut(vector_h(qq));
-    writeOut(vector_h(vnew));
-    writeOut(vector_h(v));
-    writeOut(vector_h(regElemlist));
-    writeOut(vector_h(e));
-    writeOut(vector_h(delv));
-    writeOut(vector_h(p));
-    writeOut(vector_h(q));
-    writeOut(vector_h(ss));
-    writeOut(vector_h(regCSR));
-    writeOut(vector_h(regReps));
-    writeOutwriteOutWord(length);
-    writeOutwriteOutWord(rho0);
-    writeOutwriteOutWord(e_cut);
-    writeOutwriteOutWord(emin);
-    writeOutwriteOutWord(pmin);
-    writeOutwriteOutWord(*bad_vol);
-    writeOutwriteOutWord(p_cut);
-    writeOutwriteOutWord(eosvmin);
-    writeOutwriteOutWord(eosvmax);
-    writeOutwriteOutWord(ss4o3);
-    writeOutwriteOutWord(v_cut);
-    writeOutwriteOutWord(cost);
-    writeOutwriteOutWord(numReg);
-}
-
 void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
 {
     Index_t length = domain->numElem;
-    static int iter = 0;
     if(length != 0)
     {
         Index_t dimBlock = 128;
         Index_t dimGrid = PAD_DIV(length, dimBlock);
-        if(iter == 1)
-        {
-            clear();
-            CheckErrorApply(
-                length,
-                domain->refdens,
-                domain->e_cut,
-                domain->emin,
-                domain->ql, // dev
-                domain->qq, // dev
-                *domain->vnew, // dev,
-                domain->v, // dev,
-                domain->pmin,
-                domain->p_cut,
-                domain->q_cut,
-                domain->eosvmin,
-                domain->eosvmax,
-                domain->regElemlist, // dev,
-                domain->e, // dev,
-                *domain->delv_eta, // dev,
-                domain->p, // dev,
-                domain->q, // dev,
-                domain->ss4o3,
-                domain->ss, // dev,
-                domain->v_cut,
-                domain->bad_vol_h, // dev,
-                domain->cost,
-                domain->regCSR, // dev,
-                domain->regReps, // dev,
-                domain->numReg);
-        }
-        ApplyMaterialPropertiesAndUpdateVolume_kernel<<<dimGrid, dimBlock>>>(
+        using ApplyMaterialPropertiesAndUpdateVolume
+            = lulesh_port_kernels::ApplyMaterialPropertiesAndUpdateVolume_kernel_class;
+        // cudaCheckError();
+        ApplyMaterialPropertiesAndUpdateVolume ApplyMaterialPropertiesAndUpdateVolumeKernel;
+
+        using Dim2 = alpaka::DimInt<2>;
+        using Idx = std::size_t;
+        using Vec2 = alpaka::Vec<Dim2, Idx>;
+        // cudaCheckError();
+        cudaDeviceSynchronize();
+        alpakaExecuteBaseKernel<Dim2, Idx>(
+            ApplyMaterialPropertiesAndUpdateVolumeKernel,
+            Vec2{dimBlock, dimGrid},
+            true,
             length,
             domain->refdens,
             domain->e_cut,
@@ -4944,59 +4635,28 @@ void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
             domain->ql.raw(),
             domain->qq.raw(),
             domain->vnew->raw(),
-            domain->v.raw(),
+            domain->v.raw(), // error
             domain->pmin,
             domain->p_cut,
             domain->q_cut,
             domain->eosvmin,
             domain->eosvmax,
             domain->regElemlist.raw(),
-            domain->e.raw(),
+            domain->e.raw(), // error
             domain->delv.raw(),
-            domain->p.raw(),
-            domain->q.raw(),
+            domain->p.raw(), // error
+            domain->q.raw(), // error
             domain->ss4o3,
-            domain->ss.raw(),
+            domain->ss.raw(), // error
             domain->v_cut,
             domain->bad_vol_h,
             domain->cost,
             domain->regCSR.raw(),
             domain->regReps.raw(),
             domain->numReg);
-        if(iter == 1)
-        {
-            CheckErrorApply(
-                length,
-                domain->refdens,
-                domain->e_cut,
-                domain->emin,
-                domain->ql, // dev
-                domain->qq, // dev
-                *domain->vnew, // dev,
-                domain->v, // dev,
-                domain->pmin,
-                domain->p_cut,
-                domain->q_cut,
-                domain->eosvmin,
-                domain->eosvmax,
-                domain->regElemlist, // dev,
-                domain->e, // dev,
-                *domain->delv_eta, // dev,
-                domain->p, // dev,
-                domain->q, // dev,
-                domain->ss4o3,
-                domain->ss, // dev,
-                domain->v_cut,
-                domain->bad_vol_h, // dev,
-                domain->cost,
-                domain->regCSR, // dev,
-                domain->regReps, // dev,
-                domain->numReg);
-        }
-        iter++;
-
+        cudaDeviceSynchronize();
+        cudaCheckError();
         // cudaDeviceSynchronize();
-        // cudaCheckError();
     }
 }
 
@@ -5759,7 +5419,7 @@ void VerifyAndWriteFinalOutput(
     {
         write_solution(&locDom);
     }
-
+    std::cout << "bef_ret" << std::endl;
     return;
 }
 
@@ -5905,16 +5565,29 @@ int main(int argc, char* argv[])
 #else
     elapsed_timeG = elapsed_time;
 #endif
-
+    cudaDeviceSynchronize();
+    cudaCheckError();
+    std::cout << "bef prof stop" << std::endl;
     cudaProfilerStop();
-
+    cudaDeviceSynchronize();
+    cudaCheckError();
+    std::cout << "aft prof" << std::endl;
     if(myRank == 0)
         VerifyAndWriteFinalOutput(elapsed_timeG, *locDom, its, nx, numRanks, structured);
+    cudaDeviceSynchronize();
+    cudaCheckError();
+    std::cout << "aft wright output" << std::endl;
 
 #ifdef SAMI
     DumpDomain(locDom);
 #endif
+    std::cout << "befReset" << std::endl;
     cudaDeviceReset();
+    std::cout << "aftReset" << std::endl;
+    cudaDeviceSynchronize();
+    cudaCheckError();
+    std::cout << "aft reset" << std::endl;
+
 
 #if USE_MPI
     MPI_Finalize();

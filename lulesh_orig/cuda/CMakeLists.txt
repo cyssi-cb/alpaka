@@ -22,7 +22,7 @@ if (WITH_OPENMP)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-set(LULESH_SOURCES ./src/allocator.h ./src/allocator.cu ./src/lulesh-comms.cu ./src/lulesh-comms-gpu.cu ./src/lulesh.cu  ./src/lulesh.h ./src/util.h ./src/vector.h)
+set(LULESH_SOURCES ./src/allocator.h ./src/allocator.cu ./src/lulesh-comms.cu ./src/lulesh-comms-gpu.cu ./src/lulesh.cu  ./src/lulesh.h ./src/kernel.h ./src/util.h ./src/vector.h)
 add_executable(${_TARGET_NAME} ${LULESH_SOURCES})
 target_link_libraries(
     ${_TARGET_NAME}

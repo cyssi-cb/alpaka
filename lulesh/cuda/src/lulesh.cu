@@ -2108,7 +2108,7 @@ inline void CalcKinematicsAndMonotonicQGradient(Domain* domain)
     using Dim2 = alpaka::DimInt<2>;
     using Idx = std::size_t;
     using Vec2 = alpaka::Vec<Dim2, Idx>;
-    // cudaCheckError();
+    cudaCheckError();
     alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(CalcKinematicsKernelObj, Vec2{block_size, dimGrid}, true);
     // cudaDeviceSynchronize();
     // cudaCheckError();
@@ -2355,112 +2355,81 @@ void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
 
 #ifdef ALPAKA
         Vector_h constraints_h(domain->constraints_d);
-        if(iter == 1)
         {
-            read_data();
+            using ApplyMaterialPropertiesAndUpdateVolume
+                = lulesh_port_kernels::ApplyMaterialPropertiesAndUpdateVolume_kernel_class;
+            // cudaCheckError();
+            ApplyMaterialPropertiesAndUpdateVolume ApplyMaterialPropertiesAndUpdateVolumeKernel;
 
-            CheckErrorApply(
+            using Dim2 = alpaka::DimInt<2>;
+            using Idx = std::size_t;
+            using Vec2 = alpaka::Vec<Dim2, Idx>;
+            // cudaCheckError();
+            alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
+                ApplyMaterialPropertiesAndUpdateVolumeKernel,
+                Vec2{dimBlock, dimGrid},
+                true,
                 length,
                 domain->refdens,
                 domain->e_cut,
                 domain->emin,
-                domain->ql, // dev
-                domain->qq, // dev
-                *domain->vnew, // dev,
-                domain->v, // dev,
+                domain->ql.raw(),
+                domain->qq.raw(),
+                domain->vnew->raw(),
+                domain->v.raw(), // error
                 domain->pmin,
                 domain->p_cut,
                 domain->q_cut,
                 domain->eosvmin,
                 domain->eosvmax,
-                domain->regElemlist, // dev,
-                domain->e, // dev,
-                *domain->delv_eta, // dev,
-                domain->p, // dev,
-                domain->q, // dev,
+                domain->regElemlist.raw(),
+                domain->e.raw(), // error
+                domain->delv.raw(),
+                domain->p.raw(), // error
+                domain->q.raw(), // error
                 domain->ss4o3,
-                domain->ss, // dev,
+                domain->ss.raw(), // error
                 domain->v_cut,
-                domain->constraints_h[2], // dev,
+                domain->constraints_d.raw(),
                 domain->cost,
-                domain->regCSR, // dev,
-                domain->regReps, // dev,
+                domain->regCSR.raw(),
+                domain->regReps.raw(),
                 domain->numReg);
-        }
-        using ApplyMaterialPropertiesAndUpdateVolume
-            = lulesh_port_kernels::ApplyMaterialPropertiesAndUpdateVolume_kernel_class;
-        // cudaCheckError();
-        ApplyMaterialPropertiesAndUpdateVolume ApplyMaterialPropertiesAndUpdateVolumeKernel;
-
-        using Dim2 = alpaka::DimInt<2>;
-        using Idx = std::size_t;
-        using Vec2 = alpaka::Vec<Dim2, Idx>;
-        // cudaCheckError();
-        alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
-            ApplyMaterialPropertiesAndUpdateVolumeKernel,
-            Vec2{dimBlock, dimGrid},
-            true,
-            length,
-            domain->refdens,
-            domain->e_cut,
-            domain->emin,
-            domain->ql.raw(),
-            domain->qq.raw(),
-            domain->vnew->raw(),
-            domain->v.raw(), // error
-            domain->pmin,
-            domain->p_cut,
-            domain->q_cut,
-            domain->eosvmin,
-            domain->eosvmax,
-            domain->regElemlist.raw(),
-            domain->e.raw(), // error
-            domain->delv.raw(),
-            domain->p.raw(), // error
-            domain->q.raw(), // error
-            domain->ss4o3,
-            domain->ss.raw(), // error
-            domain->v_cut,
-            domain->constraints_d.raw(),
-            domain->cost,
-            domain->regCSR.raw(),
-            domain->regReps.raw(),
-            domain->numReg);
-        constraints_h = domain->constraints_d;
-        if(iter == 1)
-        {
-            std::cout << std::endl;
-            std::cout << " aft " << std::endl;
-            std::cout << std::endl;
-            CheckErrorApply(
-                length,
-                domain->refdens,
-                domain->e_cut,
-                domain->emin,
-                domain->ql, // dev
-                domain->qq, // dev
-                *domain->vnew, // dev,
-                domain->v, // dev,
-                domain->pmin,
-                domain->p_cut,
-                domain->q_cut,
-                domain->eosvmin,
-                domain->eosvmax,
-                domain->regElemlist, // dev,
-                domain->e, // dev,
-                *domain->delv_eta, // dev,
-                domain->p, // dev,
-                domain->q, // dev,
-                domain->ss4o3,
-                domain->ss, // dev,
-                domain->v_cut,
-                domain->constraints_h[2], // dev,
-                domain->cost,
-                domain->regCSR, // dev,
-                domain->regReps, // dev,
-                domain->numReg);
-        }
-        iter++;
+            constraints_h = domain->constraints_d;
+            if(iter == 1)
+            {
+                std::cout << std::endl;
+                std::cout << " aft " << std::endl;
+                std::cout << std::endl;
+                CheckErrorApply(
+                    length,
+                    domain->refdens,
+                    domain->e_cut,
+                    domain->emin,
+                    domain->ql, // dev
+                    domain->qq, // dev
+                    *domain->vnew, // dev,
+                    domain->v, // dev,
+                    domain->pmin,
+                    domain->p_cut,
+                    domain->q_cut,
+                    domain->eosvmin,
+                    domain->eosvmax,
+                    domain->regElemlist, // dev,
+                    domain->e, // dev,
+                    *domain->delv_eta, // dev,
+                    domain->p, // dev,
+                    domain->q, // dev,
+                    domain->ss4o3,
+                    domain->ss, // dev,
+                    domain->v_cut,
+                    domain->constraints_h[2], // dev,
+                    domain->cost,
+                    domain->regCSR, // dev,
+                    domain->regReps, // dev,
+                    domain->numReg);
+            }
+            iter++;
 
 #else
 
@@ -2492,454 +2461,455 @@ void ApplyMaterialPropertiesAndUpdateVolume(Domain* domain)
             domain->regReps.raw(),
             domain->numReg);
 #endif
-        // cudaDeviceSynchronize();
-        // cudaCheckError();
+            // cudaDeviceSynchronize();
+            // cudaCheckError();
+        }
     }
-}
 
-inline void LagrangeElements(Domain* domain)
-{
-    int allElem = domain->numElem + /* local elem */
-                  2 * domain->sizeX * domain->sizeY + /* plane ghosts */
-                  2 * domain->sizeX * domain->sizeZ + /* row ghosts */
-                  2 * domain->sizeY * domain->sizeZ; /* col ghosts */
+    inline void LagrangeElements(Domain * domain)
+    {
+        int allElem = domain->numElem + /* local elem */
+                      2 * domain->sizeX * domain->sizeY + /* plane ghosts */
+                      2 * domain->sizeX * domain->sizeZ + /* row ghosts */
+                      2 * domain->sizeY * domain->sizeZ; /* col ghosts */
 
-    domain->vnew = Allocator<Vector_d<Real_t>>::allocate(domain->numElem);
-    domain->dxx = Allocator<Vector_d<Real_t>>::allocate(domain->numElem);
-    domain->dyy = Allocator<Vector_d<Real_t>>::allocate(domain->numElem);
-    domain->dzz = Allocator<Vector_d<Real_t>>::allocate(domain->numElem);
+        domain->vnew = Allocator<Vector_d<Real_t>>::allocate(domain->numElem);
+        domain->dxx = Allocator<Vector_d<Real_t>>::allocate(domain->numElem);
+        domain->dyy = Allocator<Vector_d<Real_t>>::allocate(domain->numElem);
+        domain->dzz = Allocator<Vector_d<Real_t>>::allocate(domain->numElem);
 
-    domain->delx_xi = Allocator<Vector_d<Real_t>>::allocate(domain->numElem);
-    domain->delx_eta = Allocator<Vector_d<Real_t>>::allocate(domain->numElem);
-    domain->delx_zeta = Allocator<Vector_d<Real_t>>::allocate(domain->numElem);
+        domain->delx_xi = Allocator<Vector_d<Real_t>>::allocate(domain->numElem);
+        domain->delx_eta = Allocator<Vector_d<Real_t>>::allocate(domain->numElem);
+        domain->delx_zeta = Allocator<Vector_d<Real_t>>::allocate(domain->numElem);
 
-    domain->delv_xi = Allocator<Vector_d<Real_t>>::allocate(allElem);
-    domain->delv_eta = Allocator<Vector_d<Real_t>>::allocate(allElem);
-    domain->delv_zeta = Allocator<Vector_d<Real_t>>::allocate(allElem);
-
-#if USE_MPI
-    CommRecv(*domain, MSG_MONOQ, 3, domain->sizeX, domain->sizeY, domain->sizeZ, true, true);
-#endif
-
-    /*********************************************/
-    /*  Calc Kinematics and Monotic Q Gradient   */
-    /*********************************************/
-    CalcKinematicsAndMonotonicQGradient(domain);
+        domain->delv_xi = Allocator<Vector_d<Real_t>>::allocate(allElem);
+        domain->delv_eta = Allocator<Vector_d<Real_t>>::allocate(allElem);
+        domain->delv_zeta = Allocator<Vector_d<Real_t>>::allocate(allElem);
 
 #if USE_MPI
-    Domain_member fieldData[3];
-
-    // initialize pointers
-    domain->d_delv_xi = domain->delv_xi->raw();
-    domain->d_delv_eta = domain->delv_eta->raw();
-    domain->d_delv_zeta = domain->delv_zeta->raw();
-
-    fieldData[0] = &Domain::get_delv_xi;
-    fieldData[1] = &Domain::get_delv_eta;
-    fieldData[2] = &Domain::get_delv_zeta;
-
-    CommSendGpu(
-        *domain,
-        MSG_MONOQ,
-        3,
-        fieldData,
-        domain->sizeX,
-        domain->sizeY,
-        domain->sizeZ,
-        true,
-        true,
-        domain->streams[2]);
-    CommMonoQGpu(*domain, domain->streams[2]);
+        CommRecv(*domain, MSG_MONOQ, 3, domain->sizeX, domain->sizeY, domain->sizeZ, true, true);
 #endif
 
-    Allocator<Vector_d<Real_t>>::free(domain->dxx, domain->numElem);
-    Allocator<Vector_d<Real_t>>::free(domain->dyy, domain->numElem);
-    Allocator<Vector_d<Real_t>>::free(domain->dzz, domain->numElem);
+        /*********************************************/
+        /*  Calc Kinematics and Monotic Q Gradient   */
+        /*********************************************/
+        CalcKinematicsAndMonotonicQGradient(domain);
 
-    /**********************************
-     *    Calc Monotic Q Region
-     **********************************/
-    CalcMonotonicQRegionForElems(domain);
+#if USE_MPI
+        Domain_member fieldData[3];
 
-    Allocator<Vector_d<Real_t>>::free(domain->delx_xi, domain->numElem);
-    Allocator<Vector_d<Real_t>>::free(domain->delx_eta, domain->numElem);
-    Allocator<Vector_d<Real_t>>::free(domain->delx_zeta, domain->numElem);
+        // initialize pointers
+        domain->d_delv_xi = domain->delv_xi->raw();
+        domain->d_delv_eta = domain->delv_eta->raw();
+        domain->d_delv_zeta = domain->delv_zeta->raw();
 
-    Allocator<Vector_d<Real_t>>::free(domain->delv_xi, allElem);
-    Allocator<Vector_d<Real_t>>::free(domain->delv_eta, allElem);
-    Allocator<Vector_d<Real_t>>::free(domain->delv_zeta, allElem);
+        fieldData[0] = &Domain::get_delv_xi;
+        fieldData[1] = &Domain::get_delv_eta;
+        fieldData[2] = &Domain::get_delv_zeta;
 
-    ApplyMaterialPropertiesAndUpdateVolume(domain);
-    Allocator<Vector_d<Real_t>>::free(domain->vnew, domain->numElem);
-}
+        CommSendGpu(
+            *domain,
+            MSG_MONOQ,
+            3,
+            fieldData,
+            domain->sizeX,
+            domain->sizeY,
+            domain->sizeZ,
+            true,
+            true,
+            domain->streams[2]);
+        CommMonoQGpu(*domain, domain->streams[2]);
+#endif
 
-template<int block_size>
-__global__
+        Allocator<Vector_d<Real_t>>::free(domain->dxx, domain->numElem);
+        Allocator<Vector_d<Real_t>>::free(domain->dyy, domain->numElem);
+        Allocator<Vector_d<Real_t>>::free(domain->dzz, domain->numElem);
+
+        /**********************************
+         *    Calc Monotic Q Region
+         **********************************/
+        CalcMonotonicQRegionForElems(domain);
+
+        Allocator<Vector_d<Real_t>>::free(domain->delx_xi, domain->numElem);
+        Allocator<Vector_d<Real_t>>::free(domain->delx_eta, domain->numElem);
+        Allocator<Vector_d<Real_t>>::free(domain->delx_zeta, domain->numElem);
+
+        Allocator<Vector_d<Real_t>>::free(domain->delv_xi, allElem);
+        Allocator<Vector_d<Real_t>>::free(domain->delv_eta, allElem);
+        Allocator<Vector_d<Real_t>>::free(domain->delv_zeta, allElem);
+
+        ApplyMaterialPropertiesAndUpdateVolume(domain);
+        Allocator<Vector_d<Real_t>>::free(domain->vnew, domain->numElem);
+    }
+
+    template<int block_size>
+    __global__
 #ifdef DOUBLE_PRECISION
-    __launch_bounds__(128, 16)
+        __launch_bounds__(128, 16)
 #else
     __launch_bounds__(128, 16)
 #endif
-        void CalcTimeConstraintsForElems_kernel(
-            Index_t length,
-            Real_t qqc2,
-            Real_t dvovmax,
-            Index_t* matElemlist,
-            Real_t* ss,
-            Real_t* vdov,
-            Real_t* arealg,
-            Real_t* dev_mindtcourant,
-            Real_t* dev_mindthydro)
-{
-    int tid = threadIdx.x;
-    int i = blockDim.x * blockIdx.x + tid;
-
-    __shared__ volatile Real_t s_mindthydro[block_size];
-    __shared__ volatile Real_t s_mindtcourant[block_size];
-
-    Real_t mindthydro = Real_t(1.0e+20);
-    Real_t mindtcourant = Real_t(1.0e+20);
-
-    Real_t dthydro = mindthydro;
-    Real_t dtcourant = mindtcourant;
-
-    while(i < length)
+            void
+            CalcTimeConstraintsForElems_kernel(
+                Index_t length,
+                Real_t qqc2,
+                Real_t dvovmax,
+                Index_t * matElemlist,
+                Real_t * ss,
+                Real_t * vdov,
+                Real_t * arealg,
+                Real_t * dev_mindtcourant,
+                Real_t * dev_mindthydro)
     {
-        Index_t indx = matElemlist[i];
-        Real_t vdov_tmp = vdov[indx];
+        int tid = threadIdx.x;
+        int i = blockDim.x * blockIdx.x + tid;
 
-        // Computing dt_hydro
-        if(vdov_tmp != Real_t(0.))
+        __shared__ volatile Real_t s_mindthydro[block_size];
+        __shared__ volatile Real_t s_mindtcourant[block_size];
+
+        Real_t mindthydro = Real_t(1.0e+20);
+        Real_t mindtcourant = Real_t(1.0e+20);
+
+        Real_t dthydro = mindthydro;
+        Real_t dtcourant = mindtcourant;
+
+        while(i < length)
         {
-            Real_t dtdvov = dvovmax / (FABS(vdov_tmp) + Real_t(1.e-20));
-            if(dthydro > dtdvov)
+            Index_t indx = matElemlist[i];
+            Real_t vdov_tmp = vdov[indx];
+
+            // Computing dt_hydro
+            if(vdov_tmp != Real_t(0.))
             {
-                dthydro = dtdvov;
+                Real_t dtdvov = dvovmax / (FABS(vdov_tmp) + Real_t(1.e-20));
+                if(dthydro > dtdvov)
+                {
+                    dthydro = dtdvov;
+                }
             }
+            if(dthydro < mindthydro)
+                mindthydro = dthydro;
+
+            // Computing dt_courant
+            Real_t ss_tmp = ss[indx];
+            Real_t area_tmp = arealg[indx];
+            Real_t dtf = ss_tmp * ss_tmp;
+
+            dtf += ((vdov_tmp < 0.) ? qqc2 * area_tmp * area_tmp * vdov_tmp * vdov_tmp : 0.);
+
+            dtf = area_tmp / SQRT(dtf);
+
+            /* determine minimum timestep with its corresponding elem */
+            if(vdov_tmp != Real_t(0.) && dtf < dtcourant)
+            {
+                dtcourant = dtf;
+            }
+
+            if(dtcourant < mindtcourant)
+                mindtcourant = dtcourant;
+
+            i += gridDim.x * blockDim.x;
         }
-        if(dthydro < mindthydro)
-            mindthydro = dthydro;
 
-        // Computing dt_courant
-        Real_t ss_tmp = ss[indx];
-        Real_t area_tmp = arealg[indx];
-        Real_t dtf = ss_tmp * ss_tmp;
-
-        dtf += ((vdov_tmp < 0.) ? qqc2 * area_tmp * area_tmp * vdov_tmp * vdov_tmp : 0.);
-
-        dtf = area_tmp / SQRT(dtf);
-
-        /* determine minimum timestep with its corresponding elem */
-        if(vdov_tmp != Real_t(0.) && dtf < dtcourant)
-        {
-            dtcourant = dtf;
-        }
-
-        if(dtcourant < mindtcourant)
-            mindtcourant = dtcourant;
-
-        i += gridDim.x * blockDim.x;
-    }
-
-    s_mindthydro[tid] = mindthydro;
-    s_mindtcourant[tid] = mindtcourant;
-
-    __syncthreads();
-
-    // Do shared memory reduction
-    if(block_size >= 1024)
-    {
-        if(tid < 512)
-        {
-            s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 512]);
-            s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 512]);
-        }
-        __syncthreads();
-    }
-
-    if(block_size >= 512)
-    {
-        if(tid < 256)
-        {
-            s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 256]);
-            s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 256]);
-        }
-        __syncthreads();
-    }
-
-    if(block_size >= 256)
-    {
-        if(tid < 128)
-        {
-            s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 128]);
-            s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 128]);
-        }
-        __syncthreads();
-    }
-
-    if(block_size >= 128)
-    {
-        if(tid < 64)
-        {
-            s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 64]);
-            s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 64]);
-        }
-        __syncthreads();
-    }
-
-    if(tid < 32)
-    {
-        s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 32]);
-        s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 32]);
-    }
-
-    if(tid < 16)
-    {
-        s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 16]);
-        s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 16]);
-    }
-    if(tid < 8)
-    {
-        s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 8]);
-        s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 8]);
-    }
-    if(tid < 4)
-    {
-        s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 4]);
-        s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 4]);
-    }
-    if(tid < 2)
-    {
-        s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 2]);
-        s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 2]);
-    }
-    if(tid < 1)
-    {
-        s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 1]);
-        s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 1]);
-    }
-
-    // Store in global memory
-    if(tid == 0)
-    {
-        dev_mindtcourant[blockIdx.x] = s_mindtcourant[0];
-        dev_mindthydro[blockIdx.x] = s_mindthydro[0];
-    }
-}
-
-template<int block_size>
-__global__ void CalcMinDtOneBlock(
-    Real_t* dev_mindthydro,
-    Real_t* dev_mindtcourant,
-    Real_t* dtcourant,
-    Real_t* dthydro,
-    Index_t shared_array_size)
-{
-    __shared__ volatile Real_t s_data[block_size];
-    int tid = threadIdx.x;
-
-    if(blockIdx.x == 0)
-    {
-        if(tid < shared_array_size)
-            s_data[tid] = dev_mindtcourant[tid];
-        else
-            s_data[tid] = 1.0e20;
+        s_mindthydro[tid] = mindthydro;
+        s_mindtcourant[tid] = mindtcourant;
 
         __syncthreads();
 
+        // Do shared memory reduction
         if(block_size >= 1024)
         {
             if(tid < 512)
             {
-                s_data[tid] = min(s_data[tid], s_data[tid + 512]);
+                s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 512]);
+                s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 512]);
             }
             __syncthreads();
         }
+
         if(block_size >= 512)
         {
             if(tid < 256)
             {
-                s_data[tid] = min(s_data[tid], s_data[tid + 256]);
+                s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 256]);
+                s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 256]);
             }
             __syncthreads();
         }
+
         if(block_size >= 256)
         {
             if(tid < 128)
             {
-                s_data[tid] = min(s_data[tid], s_data[tid + 128]);
+                s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 128]);
+                s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 128]);
             }
             __syncthreads();
         }
+
         if(block_size >= 128)
         {
             if(tid < 64)
             {
-                s_data[tid] = min(s_data[tid], s_data[tid + 64]);
+                s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 64]);
+                s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 64]);
             }
             __syncthreads();
         }
+
         if(tid < 32)
         {
-            s_data[tid] = min(s_data[tid], s_data[tid + 32]);
+            s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 32]);
+            s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 32]);
         }
+
         if(tid < 16)
         {
-            s_data[tid] = min(s_data[tid], s_data[tid + 16]);
+            s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 16]);
+            s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 16]);
         }
         if(tid < 8)
         {
-            s_data[tid] = min(s_data[tid], s_data[tid + 8]);
+            s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 8]);
+            s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 8]);
         }
         if(tid < 4)
         {
-            s_data[tid] = min(s_data[tid], s_data[tid + 4]);
+            s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 4]);
+            s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 4]);
         }
         if(tid < 2)
         {
-            s_data[tid] = min(s_data[tid], s_data[tid + 2]);
+            s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 2]);
+            s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 2]);
         }
         if(tid < 1)
         {
-            s_data[tid] = min(s_data[tid], s_data[tid + 1]);
+            s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 1]);
+            s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 1]);
         }
 
-        if(tid < 1)
+        // Store in global memory
+        if(tid == 0)
         {
-            *(dtcourant) = s_data[0];
+            dev_mindtcourant[blockIdx.x] = s_mindtcourant[0];
+            dev_mindthydro[blockIdx.x] = s_mindthydro[0];
         }
     }
-    else if(blockIdx.x == 1)
+
+    template<int block_size>
+    __global__ void CalcMinDtOneBlock(
+        Real_t * dev_mindthydro,
+        Real_t * dev_mindtcourant,
+        Real_t * dtcourant,
+        Real_t * dthydro,
+        Index_t shared_array_size)
     {
-        if(tid < shared_array_size)
-            s_data[tid] = dev_mindthydro[tid];
-        else
-            s_data[tid] = 1.0e20;
+        __shared__ volatile Real_t s_data[block_size];
+        int tid = threadIdx.x;
 
-        __syncthreads();
+        if(blockIdx.x == 0)
+        {
+            if(tid < shared_array_size)
+                s_data[tid] = dev_mindtcourant[tid];
+            else
+                s_data[tid] = 1.0e20;
 
-        if(block_size >= 1024)
-        {
-            if(tid < 512)
-            {
-                s_data[tid] = min(s_data[tid], s_data[tid + 512]);
-            }
             __syncthreads();
-        }
-        if(block_size >= 512)
-        {
-            if(tid < 256)
-            {
-                s_data[tid] = min(s_data[tid], s_data[tid + 256]);
-            }
-            __syncthreads();
-        }
-        if(block_size >= 256)
-        {
-            if(tid < 128)
-            {
-                s_data[tid] = min(s_data[tid], s_data[tid + 128]);
-            }
-            __syncthreads();
-        }
-        if(block_size >= 128)
-        {
-            if(tid < 64)
-            {
-                s_data[tid] = min(s_data[tid], s_data[tid + 64]);
-            }
-            __syncthreads();
-        }
-        if(tid < 32)
-        {
-            s_data[tid] = min(s_data[tid], s_data[tid + 32]);
-        }
-        if(tid < 16)
-        {
-            s_data[tid] = min(s_data[tid], s_data[tid + 16]);
-        }
-        if(tid < 8)
-        {
-            s_data[tid] = min(s_data[tid], s_data[tid + 8]);
-        }
-        if(tid < 4)
-        {
-            s_data[tid] = min(s_data[tid], s_data[tid + 4]);
-        }
-        if(tid < 2)
-        {
-            s_data[tid] = min(s_data[tid], s_data[tid + 2]);
-        }
-        if(tid < 1)
-        {
-            s_data[tid] = min(s_data[tid], s_data[tid + 1]);
-        }
 
-        if(tid < 1)
+            if(block_size >= 1024)
+            {
+                if(tid < 512)
+                {
+                    s_data[tid] = min(s_data[tid], s_data[tid + 512]);
+                }
+                __syncthreads();
+            }
+            if(block_size >= 512)
+            {
+                if(tid < 256)
+                {
+                    s_data[tid] = min(s_data[tid], s_data[tid + 256]);
+                }
+                __syncthreads();
+            }
+            if(block_size >= 256)
+            {
+                if(tid < 128)
+                {
+                    s_data[tid] = min(s_data[tid], s_data[tid + 128]);
+                }
+                __syncthreads();
+            }
+            if(block_size >= 128)
+            {
+                if(tid < 64)
+                {
+                    s_data[tid] = min(s_data[tid], s_data[tid + 64]);
+                }
+                __syncthreads();
+            }
+            if(tid < 32)
+            {
+                s_data[tid] = min(s_data[tid], s_data[tid + 32]);
+            }
+            if(tid < 16)
+            {
+                s_data[tid] = min(s_data[tid], s_data[tid + 16]);
+            }
+            if(tid < 8)
+            {
+                s_data[tid] = min(s_data[tid], s_data[tid + 8]);
+            }
+            if(tid < 4)
+            {
+                s_data[tid] = min(s_data[tid], s_data[tid + 4]);
+            }
+            if(tid < 2)
+            {
+                s_data[tid] = min(s_data[tid], s_data[tid + 2]);
+            }
+            if(tid < 1)
+            {
+                s_data[tid] = min(s_data[tid], s_data[tid + 1]);
+            }
+
+            if(tid < 1)
+            {
+                *(dtcourant) = s_data[0];
+            }
+        }
+        else if(blockIdx.x == 1)
         {
-            *(dthydro) = s_data[0];
+            if(tid < shared_array_size)
+                s_data[tid] = dev_mindthydro[tid];
+            else
+                s_data[tid] = 1.0e20;
+
+            __syncthreads();
+
+            if(block_size >= 1024)
+            {
+                if(tid < 512)
+                {
+                    s_data[tid] = min(s_data[tid], s_data[tid + 512]);
+                }
+                __syncthreads();
+            }
+            if(block_size >= 512)
+            {
+                if(tid < 256)
+                {
+                    s_data[tid] = min(s_data[tid], s_data[tid + 256]);
+                }
+                __syncthreads();
+            }
+            if(block_size >= 256)
+            {
+                if(tid < 128)
+                {
+                    s_data[tid] = min(s_data[tid], s_data[tid + 128]);
+                }
+                __syncthreads();
+            }
+            if(block_size >= 128)
+            {
+                if(tid < 64)
+                {
+                    s_data[tid] = min(s_data[tid], s_data[tid + 64]);
+                }
+                __syncthreads();
+            }
+            if(tid < 32)
+            {
+                s_data[tid] = min(s_data[tid], s_data[tid + 32]);
+            }
+            if(tid < 16)
+            {
+                s_data[tid] = min(s_data[tid], s_data[tid + 16]);
+            }
+            if(tid < 8)
+            {
+                s_data[tid] = min(s_data[tid], s_data[tid + 8]);
+            }
+            if(tid < 4)
+            {
+                s_data[tid] = min(s_data[tid], s_data[tid + 4]);
+            }
+            if(tid < 2)
+            {
+                s_data[tid] = min(s_data[tid], s_data[tid + 2]);
+            }
+            if(tid < 1)
+            {
+                s_data[tid] = min(s_data[tid], s_data[tid + 1]);
+            }
+
+            if(tid < 1)
+            {
+                *(dthydro) = s_data[0];
+            }
         }
     }
-}
 
-inline void CalcTimeConstraintsForElems(Domain* domain)
-{
-    Real_t qqc = domain->qqc;
-    Real_t qqc2 = Real_t(64.0) * qqc * qqc;
-    Real_t dvovmax = domain->dvovmax;
+    inline void CalcTimeConstraintsForElems(Domain * domain)
+    {
+        Real_t qqc = domain->qqc;
+        Real_t qqc2 = Real_t(64.0) * qqc * qqc;
+        Real_t dvovmax = domain->dvovmax;
 
-    Index_t const length = domain->numElem;
+        Index_t const length = domain->numElem;
 
-    int const max_dimGrid = 1024;
-    int const dimBlock = 128;
-    int dimGrid = std::min(max_dimGrid, PAD_DIV(length, dimBlock));
+        int const max_dimGrid = 1024;
+        int const dimBlock = 128;
+        int dimGrid = std::min(max_dimGrid, PAD_DIV(length, dimBlock));
 
-    Vector_d<Real_t>* dev_mindtcourant = Allocator<Vector_d<Real_t>>::allocate(dimGrid);
-    Vector_d<Real_t>* dev_mindthydro = Allocator<Vector_d<Real_t>>::allocate(dimGrid);
-    // cudaDeviceSynchronize();
+        Vector_d<Real_t>* dev_mindtcourant = Allocator<Vector_d<Real_t>>::allocate(dimGrid);
+        Vector_d<Real_t>* dev_mindthydro = Allocator<Vector_d<Real_t>>::allocate(dimGrid);
+        // cudaDeviceSynchronize();
 #ifdef ALPAKA
-    using CalcTimeConstraintsForElems = lulesh_port_kernels::CalcTimeConstraintsForElems_kernel_class<dimBlock>;
-    // cudaCheckError();
-    CalcTimeConstraintsForElems CalcTimeConstraintsKernel(
-        length,
-        qqc2,
-        dvovmax,
-        domain->matElemlist.raw(),
-        domain->ss.raw(),
-        domain->vdov.raw(),
-        domain->arealg.raw(),
-        dev_mindtcourant->raw(),
-        dev_mindthydro->raw());
+        using CalcTimeConstraintsForElems = lulesh_port_kernels::CalcTimeConstraintsForElems_kernel_class<dimBlock>;
+        // cudaCheckError();
+        CalcTimeConstraintsForElems CalcTimeConstraintsKernel(
+            length,
+            qqc2,
+            dvovmax,
+            domain->matElemlist.raw(),
+            domain->ss.raw(),
+            domain->vdov.raw(),
+            domain->arealg.raw(),
+            dev_mindtcourant->raw(),
+            dev_mindthydro->raw());
 
-    using Dim2 = alpaka::DimInt<2>;
-    using Idx = std::size_t;
-    using Vec2 = alpaka::Vec<Dim2, Idx>;
+        using Dim2 = alpaka::DimInt<2>;
+        using Idx = std::size_t;
+        using Vec2 = alpaka::Vec<Dim2, Idx>;
 
-    alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(CalcTimeConstraintsKernel, Vec2{dimBlock, dimGrid}, true);
+        alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(CalcTimeConstraintsKernel, Vec2{dimBlock, dimGrid}, true);
 
-    // cudaDeviceSynchronize();
-    // cudaCheckError();
+        // cudaDeviceSynchronize();
+        // cudaCheckError();
 
-    // TODO: CalcMinDtOneBlock
-    using CalcMinDtOneBlock = lulesh_port_kernels::CalcMinDtOneBlock_class<max_dimGrid>;
-    // cudaCheckError();
-    CalcMinDtOneBlock CalcMinDtOneBlockKernel(
-        dev_mindthydro->raw(),
-        dev_mindtcourant->raw(),
-        domain->constraints_d.raw(),
-        dimGrid);
+        // TODO: CalcMinDtOneBlock
+        using CalcMinDtOneBlock = lulesh_port_kernels::CalcMinDtOneBlock_class<max_dimGrid>;
+        // cudaCheckError();
+        CalcMinDtOneBlock CalcMinDtOneBlockKernel(
+            dev_mindthydro->raw(),
+            dev_mindtcourant->raw(),
+            domain->constraints_d.raw(),
+            dimGrid);
 
-    using Dim2 = alpaka::DimInt<2>;
-    using Idx = std::size_t;
-    using Vec2 = alpaka::Vec<Dim2, Idx>;
+        using Dim2 = alpaka::DimInt<2>;
+        using Idx = std::size_t;
+        using Vec2 = alpaka::Vec<Dim2, Idx>;
 
-    alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
-        CalcMinDtOneBlockKernel,
-        Vec2{max_dimGrid, 2},
-        true); // Should be started with two blocks!
+        alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
+            CalcMinDtOneBlockKernel,
+            Vec2{max_dimGrid, 2},
+            true); // Should be started with two blocks!
 
-    // cudaDeviceSynchronize();
-    // cudaCheckError();
+        // cudaDeviceSynchronize();
+        // cudaCheckError();
 
 #else
     cudaFuncSetCacheConfig(CalcTimeConstraintsForElems_kernel<dimBlock>, cudaFuncCachePreferShared);
@@ -2964,44 +2934,44 @@ inline void CalcTimeConstraintsForElems(Domain* domain)
         dimGrid);
 #endif
 
-    // cudaEventRecord(domain->time_constraint_computed,domain->streams[1]);
+        // cudaEventRecord(domain->time_constraint_computed,domain->streams[1]);
 
-    Allocator<Vector_d<Real_t>>::free(dev_mindtcourant, dimGrid);
-    Allocator<Vector_d<Real_t>>::free(dev_mindthydro, dimGrid);
-}
+        Allocator<Vector_d<Real_t>>::free(dev_mindtcourant, dimGrid);
+        Allocator<Vector_d<Real_t>>::free(dev_mindthydro, dimGrid);
+    }
 
-inline void LagrangeLeapFrog(Domain* domain)
-{
-    /* calculate nodal forces, accelerations, velocities, positions, with
-     * applied boundary conditions and slide surface considerations */
-    LagrangeNodal(domain);
+    inline void LagrangeLeapFrog(Domain * domain)
+    {
+        /* calculate nodal forces, accelerations, velocities, positions, with
+         * applied boundary conditions and slide surface considerations */
+        LagrangeNodal(domain);
 
-    /* calculate element quantities (i.e. velocity gradient & q), and update
-     * material states */
-    LagrangeElements(domain);
+        /* calculate element quantities (i.e. velocity gradient & q), and update
+         * material states */
+        LagrangeElements(domain);
 
-    CalcTimeConstraintsForElems(domain);
-}
+        CalcTimeConstraintsForElems(domain);
+    }
 
-void printUsage(char* argv[])
-{
-    printf("Usage: \n");
-    printf("Unstructured grid:  %s -u <file.lmesh> \n", argv[0]);
-    printf("Structured grid:    %s -s numEdgeElems \n", argv[0]);
-    printf("\nExamples:\n");
-    printf("%s -s 45\n", argv[0]);
-    printf("%s -u sedov15oct.lmesh\n", argv[0]);
-}
+    void printUsage(char* argv[])
+    {
+        printf("Usage: \n");
+        printf("Unstructured grid:  %s -u <file.lmesh> \n", argv[0]);
+        printf("Structured grid:    %s -s numEdgeElems \n", argv[0]);
+        printf("\nExamples:\n");
+        printf("%s -s 45\n", argv[0]);
+        printf("%s -u sedov15oct.lmesh\n", argv[0]);
+    }
 
 #ifdef SAMI
 
 #    ifdef __cplusplus
-extern "C"
-{
+    extern "C"
+    {
 #    endif
 #    include "silo.h"
 #    ifdef __cplusplus
-}
+    }
 #    endif
 
 #    define MAX_LEN_SAMI_HEADER 10
@@ -3014,450 +2984,450 @@ extern "C"
 
 #    define MAX_ADJACENCY 14 /* must be 14 or greater */
 
-void DumpSAMI(Domain* domain, char* name)
-{
-    DBfile* fp;
-    int headerLen = MAX_LEN_SAMI_HEADER;
-    int headerInfo[MAX_LEN_SAMI_HEADER];
-    char varName[] = "brick_nd0";
-    char coordName[] = "x";
-    int version = 121;
-    int numElem = int(domain->numElem);
-    int numNode = int(domain->numNode);
-    int count;
-
-    int* materialID;
-    int* nodeConnect;
-    double* nodeCoord;
-
-    if((fp = DBCreate(name, DB_CLOBBER, DB_LOCAL, NULL, DB_PDB)) == NULL)
+    void DumpSAMI(Domain * domain, char* name)
     {
-        printf("Couldn't create file %s\n", name);
-        exit(1);
-    }
+        DBfile* fp;
+        int headerLen = MAX_LEN_SAMI_HEADER;
+        int headerInfo[MAX_LEN_SAMI_HEADER];
+        char varName[] = "brick_nd0";
+        char coordName[] = "x";
+        int version = 121;
+        int numElem = int(domain->numElem);
+        int numNode = int(domain->numNode);
+        int count;
 
-    for(int i = 0; i < MAX_LEN_SAMI_HEADER; ++i)
-    {
-        headerInfo[i] = 0;
-    }
-    headerInfo[SAMI_HDR_NUMBRICK] = numElem;
-    headerInfo[SAMI_HDR_NUMNODES] = numNode;
-    headerInfo[SAMI_HDR_NUMMATERIAL] = 1;
-    headerInfo[SAMI_HDR_INDEX_START] = 1;
-    headerInfo[SAMI_HDR_MESHDIM] = 3;
+        int* materialID;
+        int* nodeConnect;
+        double* nodeCoord;
 
-    DBWrite(fp, "mesh_data", headerInfo, &headerLen, 1, DB_INT);
-
-    count = 1;
-    DBWrite(fp, "version", &version, &count, 1, DB_INT);
-
-    nodeConnect = new int[numElem];
-
-    Vector_h<Index_t> nodelist_h = domain->nodelist;
-
-    for(Index_t i = 0; i < 8; ++i)
-    {
-        for(Index_t j = 0; j < numElem; ++j)
+        if((fp = DBCreate(name, DB_CLOBBER, DB_LOCAL, NULL, DB_PDB)) == NULL)
         {
-            nodeConnect[j] = int(nodelist_h[i * domain->padded_numElem + j]) + 1;
+            printf("Couldn't create file %s\n", name);
+            exit(1);
         }
-        varName[8] = '0' + i;
-        DBWrite(fp, varName, nodeConnect, &numElem, 1, DB_INT);
-    }
 
-    delete[] nodeConnect;
-
-    nodeCoord = new double[numNode];
-
-    Vector_h<Real_t> x_h = domain->x;
-    Vector_h<Real_t> y_h = domain->y;
-    Vector_h<Real_t> z_h = domain->z;
-
-    for(Index_t i = 0; i < 3; ++i)
-    {
-        for(Index_t j = 0; j < numNode; ++j)
+        for(int i = 0; i < MAX_LEN_SAMI_HEADER; ++i)
         {
-            Real_t coordVal;
-            switch(i)
+            headerInfo[i] = 0;
+        }
+        headerInfo[SAMI_HDR_NUMBRICK] = numElem;
+        headerInfo[SAMI_HDR_NUMNODES] = numNode;
+        headerInfo[SAMI_HDR_NUMMATERIAL] = 1;
+        headerInfo[SAMI_HDR_INDEX_START] = 1;
+        headerInfo[SAMI_HDR_MESHDIM] = 3;
+
+        DBWrite(fp, "mesh_data", headerInfo, &headerLen, 1, DB_INT);
+
+        count = 1;
+        DBWrite(fp, "version", &version, &count, 1, DB_INT);
+
+        nodeConnect = new int[numElem];
+
+        Vector_h<Index_t> nodelist_h = domain->nodelist;
+
+        for(Index_t i = 0; i < 8; ++i)
+        {
+            for(Index_t j = 0; j < numElem; ++j)
             {
-            case 0:
-                coordVal = double(x_h[j]);
-                break;
-            case 1:
-                coordVal = double(y_h[j]);
-                break;
-            case 2:
-                coordVal = double(z_h[j]);
-                break;
+                nodeConnect[j] = int(nodelist_h[i * domain->padded_numElem + j]) + 1;
             }
-            nodeCoord[j] = coordVal;
+            varName[8] = '0' + i;
+            DBWrite(fp, varName, nodeConnect, &numElem, 1, DB_INT);
         }
-        coordName[0] = 'x' + i;
-        DBWrite(fp, coordName, nodeCoord, &numNode, 1, DB_DOUBLE);
+
+        delete[] nodeConnect;
+
+        nodeCoord = new double[numNode];
+
+        Vector_h<Real_t> x_h = domain->x;
+        Vector_h<Real_t> y_h = domain->y;
+        Vector_h<Real_t> z_h = domain->z;
+
+        for(Index_t i = 0; i < 3; ++i)
+        {
+            for(Index_t j = 0; j < numNode; ++j)
+            {
+                Real_t coordVal;
+                switch(i)
+                {
+                case 0:
+                    coordVal = double(x_h[j]);
+                    break;
+                case 1:
+                    coordVal = double(y_h[j]);
+                    break;
+                case 2:
+                    coordVal = double(z_h[j]);
+                    break;
+                }
+                nodeCoord[j] = coordVal;
+            }
+            coordName[0] = 'x' + i;
+            DBWrite(fp, coordName, nodeCoord, &numNode, 1, DB_DOUBLE);
+        }
+
+        delete[] nodeCoord;
+
+        materialID = new int[numElem];
+
+        for(Index_t i = 0; i < numElem; ++i)
+            materialID[i] = 1;
+
+        DBWrite(fp, "brick_material", materialID, &numElem, 1, DB_INT);
+
+        delete[] materialID;
+
+        DBClose(fp);
     }
-
-    delete[] nodeCoord;
-
-    materialID = new int[numElem];
-
-    for(Index_t i = 0; i < numElem; ++i)
-        materialID[i] = 1;
-
-    DBWrite(fp, "brick_material", materialID, &numElem, 1, DB_INT);
-
-    delete[] materialID;
-
-    DBClose(fp);
-}
 #endif
 
 #ifdef SAMI
-void DumpDomain(Domain* domain)
-{
-    char meshName[64];
-    printf("Dumping SAMI file\n");
-    sprintf(meshName, "sedov_%d.sami", int(domain->cycle));
+    void DumpDomain(Domain * domain)
+    {
+        char meshName[64];
+        printf("Dumping SAMI file\n");
+        sprintf(meshName, "sedov_%d.sami", int(domain->cycle));
 
-    DumpSAMI(domain, meshName);
-}
+        DumpSAMI(domain, meshName);
+    }
 #endif
 
-void write_solution(Domain* locDom)
-{
-    Vector_h<Real_t> x_h = locDom->x;
-    Vector_h<Real_t> y_h = locDom->y;
-    Vector_h<Real_t> z_h = locDom->z;
-
-    std::stringstream filename;
-    filename << "xyz.asc";
-
-    FILE* fout = fopen(filename.str().c_str(), "wb");
-
-    for(Index_t i = 0; i < locDom->numNode; i++)
+    void write_solution(Domain * locDom)
     {
-        fprintf(fout, "%10d\n", i);
-        fprintf(fout, "%.10f\n", x_h[i]);
-        fprintf(fout, "%.10f\n", y_h[i]);
-        fprintf(fout, "%.10f\n", z_h[i]);
-    }
-    fclose(fout);
-}
+        Vector_h<Real_t> x_h = locDom->x;
+        Vector_h<Real_t> y_h = locDom->y;
+        Vector_h<Real_t> z_h = locDom->z;
 
-///////////////////////////////////////////////////////////////////////////
-void InitMeshDecomp(Int_t numRanks, Int_t myRank, Int_t* col, Int_t* row, Int_t* plane, Int_t* side)
-{
-    Int_t testProcs;
-    Int_t dx, dy, dz;
-    Int_t myDom;
+        std::stringstream filename;
+        filename << "xyz.asc";
 
-    // Assume cube processor layout for now
-    testProcs = Int_t(cbrt(Real_t(numRanks)) + 0.5);
-    if(testProcs * testProcs * testProcs != numRanks)
-    {
-        printf("Num processors must be a cube of an integer (1, 8, 27, ...)\n");
-#if USE_MPI
-        MPI_Abort(MPI_COMM_WORLD, -1);
-#else
-        exit(-1);
-#endif
-    }
-    if(sizeof(Real_t) != 4 && sizeof(Real_t) != 8)
-    {
-        printf("MPI operations only support float and double right now...\n");
-#if USE_MPI
-        MPI_Abort(MPI_COMM_WORLD, -1);
-#else
-        exit(-1);
-#endif
-    }
-    if(MAX_FIELDS_PER_MPI_COMM > CACHE_COHERENCE_PAD_REAL)
-    {
-        printf("corner element comm buffers too small.  Fix code.\n");
-#if USE_MPI
-        MPI_Abort(MPI_COMM_WORLD, -1);
-#else
-        exit(-1);
-#endif
-    }
+        FILE* fout = fopen(filename.str().c_str(), "wb");
 
-    dx = testProcs;
-    dy = testProcs;
-    dz = testProcs;
-
-    // temporary test
-    if(dx * dy * dz != numRanks)
-    {
-        printf("error -- must have as many domains as procs\n");
-#if USE_MPI
-        MPI_Abort(MPI_COMM_WORLD, -1);
-#else
-        exit(-1);
-#endif
-    }
-    Int_t remainder = dx * dy * dz % numRanks;
-    if(myRank < remainder)
-    {
-        myDom = myRank * (1 + (dx * dy * dz / numRanks));
-    }
-    else
-    {
-        myDom = remainder * (1 + (dx * dy * dz / numRanks)) + (myRank - remainder) * (dx * dy * dz / numRanks);
-    }
-
-    *col = myDom % dx;
-    *row = (myDom / dx) % dy;
-    *plane = myDom / (dx * dy);
-    *side = testProcs;
-
-    return;
-}
-
-void VerifyAndWriteFinalOutput(
-    Real_t elapsed_time,
-    Domain& locDom,
-    Int_t its,
-    Int_t nx,
-    Int_t numRanks,
-    bool structured)
-{
-    size_t free_mem, total_mem, used_mem;
-    cudaMemGetInfo(&free_mem, &total_mem);
-    used_mem = total_mem - free_mem;
-#if LULESH_SHOW_PROGRESS == 0
-    printf("   Used Memory         =  %8.4f Mb\n", used_mem / (1024. * 1024.));
-#endif
-
-    // GrindTime1 only takes a single domain into account, and is thus a good way
-    // to measure processor speed indepdendent of MPI parallelism. GrindTime2
-    // takes into account speedups from MPI parallelism
-    Real_t grindTime1;
-    Real_t grindTime2;
-    if(structured)
-    {
-        grindTime1 = ((elapsed_time * 1e6) / its) / (nx * nx * nx);
-        grindTime2 = ((elapsed_time * 1e6) / its) / (nx * nx * nx * numRanks);
-    }
-    else
-    {
-        grindTime1 = ((elapsed_time * 1e6) / its) / (locDom.numElem);
-        grindTime2 = ((elapsed_time * 1e6) / its) / (locDom.numElem * numRanks);
-    }
-    // Copy Energy back to Host
-    std::cout << structured << std::endl;
-    if(structured)
-    {
-        Real_t e_zero;
-        // Real_t* d_ezero_ptr = locDom.e.raw() + locDom.octantCorner; /* octant
-        // corner supposed to be 0 */
-        Vector_h e_all(locDom.e);
-        e_zero = e_all[locDom.octantCorner];
-        // cudaMemcpy(&e_zero, d_ezero_ptr, sizeof(Real_t), cudaMemcpyDeviceToHost);
-
-        printf("Run completed:  \n");
-        printf("   Problem size        =  %i \n", nx);
-        printf("   MPI tasks           =  %i \n", numRanks);
-        printf("   Iteration count     =  %i \n", its);
-        printf("   Final Origin Energy = %12.6e \n", e_zero);
-
-        Real_t MaxAbsDiff = Real_t(0.0);
-        Real_t TotalAbsDiff = Real_t(0.0);
-        Real_t MaxRelDiff = Real_t(0.0);
-        for(Index_t j = 0; j < nx; ++j)
+        for(Index_t i = 0; i < locDom->numNode; i++)
         {
-            for(Index_t k = j + 1; k < nx; ++k)
-            {
-                Real_t AbsDiff = FABS(e_all[j * nx + k] - e_all[k * nx + j]);
-                TotalAbsDiff += AbsDiff;
+            fprintf(fout, "%10d\n", i);
+            fprintf(fout, "%.10f\n", x_h[i]);
+            fprintf(fout, "%.10f\n", y_h[i]);
+            fprintf(fout, "%.10f\n", z_h[i]);
+        }
+        fclose(fout);
+    }
 
-                if(MaxAbsDiff < AbsDiff)
-                    MaxAbsDiff = AbsDiff;
+    ///////////////////////////////////////////////////////////////////////////
+    void InitMeshDecomp(Int_t numRanks, Int_t myRank, Int_t * col, Int_t * row, Int_t * plane, Int_t * side)
+    {
+        Int_t testProcs;
+        Int_t dx, dy, dz;
+        Int_t myDom;
 
-                Real_t RelDiff = AbsDiff / e_all[k * nx + j];
-
-                if(MaxRelDiff < RelDiff)
-                    MaxRelDiff = RelDiff;
-            }
+        // Assume cube processor layout for now
+        testProcs = Int_t(cbrt(Real_t(numRanks)) + 0.5);
+        if(testProcs * testProcs * testProcs != numRanks)
+        {
+            printf("Num processors must be a cube of an integer (1, 8, 27, ...)\n");
+#if USE_MPI
+            MPI_Abort(MPI_COMM_WORLD, -1);
+#else
+        exit(-1);
+#endif
+        }
+        if(sizeof(Real_t) != 4 && sizeof(Real_t) != 8)
+        {
+            printf("MPI operations only support float and double right now...\n");
+#if USE_MPI
+            MPI_Abort(MPI_COMM_WORLD, -1);
+#else
+        exit(-1);
+#endif
+        }
+        if(MAX_FIELDS_PER_MPI_COMM > CACHE_COHERENCE_PAD_REAL)
+        {
+            printf("corner element comm buffers too small.  Fix code.\n");
+#if USE_MPI
+            MPI_Abort(MPI_COMM_WORLD, -1);
+#else
+        exit(-1);
+#endif
         }
 
-        // Quick symmetry check
-        printf("   Testing Plane 0 of Energy Array on rank 0:\n");
-        printf("        MaxAbsDiff   = %12.6e\n", MaxAbsDiff);
-        printf("        TotalAbsDiff = %12.6e\n", TotalAbsDiff);
-        printf("        MaxRelDiff   = %12.6e\n\n", MaxRelDiff);
+        dx = testProcs;
+        dy = testProcs;
+        dz = testProcs;
+
+        // temporary test
+        if(dx * dy * dz != numRanks)
+        {
+            printf("error -- must have as many domains as procs\n");
+#if USE_MPI
+            MPI_Abort(MPI_COMM_WORLD, -1);
+#else
+        exit(-1);
+#endif
+        }
+        Int_t remainder = dx * dy * dz % numRanks;
+        if(myRank < remainder)
+        {
+            myDom = myRank * (1 + (dx * dy * dz / numRanks));
+        }
+        else
+        {
+            myDom = remainder * (1 + (dx * dy * dz / numRanks)) + (myRank - remainder) * (dx * dy * dz / numRanks);
+        }
+
+        *col = myDom % dx;
+        *row = (myDom / dx) % dy;
+        *plane = myDom / (dx * dy);
+        *side = testProcs;
+
+        return;
     }
 
-    // Timing information
-    printf("\nElapsed time         = %10.2f (s)\n", elapsed_time);
-    printf("Grind time (us/z/c)  = %10.8g (per dom)  (%10.8g overall)\n", grindTime1, grindTime2);
-    printf("FOM                  = %10.8g (z/s)\n\n",
-           1000.0 / grindTime2); // zones per second
-
-    bool write_solution_flag = true;
-    if(write_solution_flag)
+    void VerifyAndWriteFinalOutput(
+        Real_t elapsed_time,
+        Domain & locDom,
+        Int_t its,
+        Int_t nx,
+        Int_t numRanks,
+        bool structured)
     {
-        write_solution(&locDom);
+        size_t free_mem, total_mem, used_mem;
+        cudaMemGetInfo(&free_mem, &total_mem);
+        used_mem = total_mem - free_mem;
+#if LULESH_SHOW_PROGRESS == 0
+        printf("   Used Memory         =  %8.4f Mb\n", used_mem / (1024. * 1024.));
+#endif
+
+        // GrindTime1 only takes a single domain into account, and is thus a good way
+        // to measure processor speed indepdendent of MPI parallelism. GrindTime2
+        // takes into account speedups from MPI parallelism
+        Real_t grindTime1;
+        Real_t grindTime2;
+        if(structured)
+        {
+            grindTime1 = ((elapsed_time * 1e6) / its) / (nx * nx * nx);
+            grindTime2 = ((elapsed_time * 1e6) / its) / (nx * nx * nx * numRanks);
+        }
+        else
+        {
+            grindTime1 = ((elapsed_time * 1e6) / its) / (locDom.numElem);
+            grindTime2 = ((elapsed_time * 1e6) / its) / (locDom.numElem * numRanks);
+        }
+        // Copy Energy back to Host
+        std::cout << structured << std::endl;
+        if(structured)
+        {
+            Real_t e_zero;
+            // Real_t* d_ezero_ptr = locDom.e.raw() + locDom.octantCorner; /* octant
+            // corner supposed to be 0 */
+            Vector_h e_all(locDom.e);
+            e_zero = e_all[locDom.octantCorner];
+            // cudaMemcpy(&e_zero, d_ezero_ptr, sizeof(Real_t), cudaMemcpyDeviceToHost);
+
+            printf("Run completed:  \n");
+            printf("   Problem size        =  %i \n", nx);
+            printf("   MPI tasks           =  %i \n", numRanks);
+            printf("   Iteration count     =  %i \n", its);
+            printf("   Final Origin Energy = %12.6e \n", e_zero);
+
+            Real_t MaxAbsDiff = Real_t(0.0);
+            Real_t TotalAbsDiff = Real_t(0.0);
+            Real_t MaxRelDiff = Real_t(0.0);
+            for(Index_t j = 0; j < nx; ++j)
+            {
+                for(Index_t k = j + 1; k < nx; ++k)
+                {
+                    Real_t AbsDiff = FABS(e_all[j * nx + k] - e_all[k * nx + j]);
+                    TotalAbsDiff += AbsDiff;
+
+                    if(MaxAbsDiff < AbsDiff)
+                        MaxAbsDiff = AbsDiff;
+
+                    Real_t RelDiff = AbsDiff / e_all[k * nx + j];
+
+                    if(MaxRelDiff < RelDiff)
+                        MaxRelDiff = RelDiff;
+                }
+            }
+
+            // Quick symmetry check
+            printf("   Testing Plane 0 of Energy Array on rank 0:\n");
+            printf("        MaxAbsDiff   = %12.6e\n", MaxAbsDiff);
+            printf("        TotalAbsDiff = %12.6e\n", TotalAbsDiff);
+            printf("        MaxRelDiff   = %12.6e\n\n", MaxRelDiff);
+        }
+
+        // Timing information
+        printf("\nElapsed time         = %10.2f (s)\n", elapsed_time);
+        printf("Grind time (us/z/c)  = %10.8g (per dom)  (%10.8g overall)\n", grindTime1, grindTime2);
+        printf("FOM                  = %10.8g (z/s)\n\n",
+               1000.0 / grindTime2); // zones per second
+
+        bool write_solution_flag = true;
+        if(write_solution_flag)
+        {
+            write_solution(&locDom);
+        }
+
+        return;
     }
 
-    return;
-}
+    int main(int argc, char* argv[])
+    {
+        if(argc < 3)
+        {
+            printUsage(argv);
+            exit(LFileError);
+        }
+        if(strcmp(argv[1], "-u") != 0 && strcmp(argv[1], "-s") != 0)
+        {
+            printUsage(argv);
+            exit(LFileError);
+        }
+        int num_iters = -1;
+        if(argc == 5)
+        {
+            num_iters = atoi(argv[4]);
+        }
 
-int main(int argc, char* argv[])
-{
-    if(argc < 3)
-    {
-        printUsage(argv);
-        exit(LFileError);
-    }
-    if(strcmp(argv[1], "-u") != 0 && strcmp(argv[1], "-s") != 0)
-    {
-        printUsage(argv);
-        exit(LFileError);
-    }
-    int num_iters = -1;
-    if(argc == 5)
-    {
-        num_iters = atoi(argv[4]);
-    }
-
-    bool structured = (strcmp(argv[1], "-s") == 0);
-    Int_t numRanks;
-    Int_t myRank;
+        bool structured = (strcmp(argv[1], "-s") == 0);
+        Int_t numRanks;
+        Int_t myRank;
 
 #ifdef TEST
 
-    if(test::test_main())
-    {
-        std::cout << " Some Tests failed << ABORTING LULESH >> " << std::endl;
-        return 1;
-    }
+        if(test::test_main())
+        {
+            std::cout << " Some Tests failed << ABORTING LULESH >> " << std::endl;
+            return 1;
+        }
 #endif
 #if USE_MPI
-    Domain_member fieldData;
+        Domain_member fieldData;
 
-    MPI_Init(&argc, &argv);
-    MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
-    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+        MPI_Init(&argc, &argv);
+        MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
+        MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 #else
     numRanks = 1;
     myRank = 0;
 #endif
 
-    /* assume cube subdomain geometry for now */
-    Index_t nx = atoi(argv[2]);
+        /* assume cube subdomain geometry for now */
+        Index_t nx = atoi(argv[2]);
 
-    Domain* locDom;
+        Domain* locDom;
 
-    // Set up the mesh and decompose. Assumes regular cubes for now
-    Int_t col, row, plane, side;
-    using std::cout;
-    using std::endl;
+        // Set up the mesh and decompose. Assumes regular cubes for now
+        Int_t col, row, plane, side;
+        using std::cout;
+        using std::endl;
 
-    InitMeshDecomp(numRanks, myRank, &col, &row, &plane, &side);
+        InitMeshDecomp(numRanks, myRank, &col, &row, &plane, &side);
 
-    // TODO: change default nr to 11
-    Int_t nr = 11;
-    Int_t balance = 1;
-    Int_t cost = 1;
+        // TODO: change default nr to 11
+        Int_t nr = 11;
+        Int_t balance = 1;
+        Int_t cost = 1;
 
-    // TODO: modify this constructor to account for new fields
-    // TODO: setup communication buffers
-    locDom = NewDomain(argv, numRanks, col, row, plane, nx, side, structured, nr, balance, cost);
+        // TODO: modify this constructor to account for new fields
+        // TODO: setup communication buffers
+        locDom = NewDomain(argv, numRanks, col, row, plane, nx, side, structured, nr, balance, cost);
 #if USE_MPI
-    // copy to the host for mpi transfer
-    locDom->h_nodalMass = locDom->nodalMass;
+        // copy to the host for mpi transfer
+        locDom->h_nodalMass = locDom->nodalMass;
 
-    fieldData = &Domain::get_nodalMass;
+        fieldData = &Domain::get_nodalMass;
 
-    // Initial domain boundary communication
-    CommRecv(*locDom, MSG_COMM_SBN, 1, locDom->sizeX + 1, locDom->sizeY + 1, locDom->sizeZ + 1, true, false);
-    CommSend(
-        *locDom,
-        MSG_COMM_SBN,
-        1,
-        &fieldData,
-        locDom->sizeX + 1,
-        locDom->sizeY + 1,
-        locDom->sizeZ + 1,
-        true,
-        false);
-    CommSBN(*locDom, 1, &fieldData);
+        // Initial domain boundary communication
+        CommRecv(*locDom, MSG_COMM_SBN, 1, locDom->sizeX + 1, locDom->sizeY + 1, locDom->sizeZ + 1, true, false);
+        CommSend(
+            *locDom,
+            MSG_COMM_SBN,
+            1,
+            &fieldData,
+            locDom->sizeX + 1,
+            locDom->sizeY + 1,
+            locDom->sizeZ + 1,
+            true,
+            false);
+        CommSBN(*locDom, 1, &fieldData);
 
-    // copy back to the device
-    locDom->nodalMass = locDom->h_nodalMass;
+        // copy back to the device
+        locDom->nodalMass = locDom->h_nodalMass;
 
-    // End initialization
-    MPI_Barrier(MPI_COMM_WORLD);
+        // End initialization
+        MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-    // timestep to solution
-    int its = 0;
+        // timestep to solution
+        int its = 0;
 
-    if(myRank == 0)
-    {
-        if(structured)
-            printf("Running until t=%f, Problem size=%dx%dx%d\n", locDom->stoptime, nx, nx, nx);
-        else
-            printf("Running until t=%f, Problem size=%d \n", locDom->stoptime, locDom->numElem);
-    }
+        if(myRank == 0)
+        {
+            if(structured)
+                printf("Running until t=%f, Problem size=%dx%dx%d\n", locDom->stoptime, nx, nx, nx);
+            else
+                printf("Running until t=%f, Problem size=%d \n", locDom->stoptime, locDom->numElem);
+        }
 
-    cudaProfilerStart();
+        cudaProfilerStart();
 
 #if USE_MPI
-    double start = MPI_Wtime();
+        double start = MPI_Wtime();
 #else
     timeval start;
     gettimeofday(&start, NULL);
 #endif
 
-    while(locDom->time_h < locDom->stoptime)
-    {
-        // this has been moved after computation of volume forces to hide launch
-        // latencies
-        // TimeIncrement(locDom) ;
+        while(locDom->time_h < locDom->stoptime)
+        {
+            // this has been moved after computation of volume forces to hide launch
+            // latencies
+            // TimeIncrement(locDom) ;
 
-        LagrangeLeapFrog(locDom);
+            LagrangeLeapFrog(locDom);
 
-        checkErrors(locDom, its, myRank);
+            checkErrors(locDom, its, myRank);
 
 #if LULESH_SHOW_PROGRESS
-        if(myRank == 0)
-            printf("cycle = %d, time = %e, dt=%e\n", its + 1, double(locDom->time_h), double(locDom->deltatime_h));
+            if(myRank == 0)
+                printf("cycle = %d, time = %e, dt=%e\n", its + 1, double(locDom->time_h), double(locDom->deltatime_h));
 #endif
-        its++;
-        if(its == num_iters)
-            break;
-    }
-    // make sure GPU finished its work
-    // cudaDeviceSynchronize();
-    // Use reduced max elapsed time
-    double elapsed_time;
+            its++;
+            if(its == num_iters)
+                break;
+        }
+        // make sure GPU finished its work
+        // cudaDeviceSynchronize();
+        // Use reduced max elapsed time
+        double elapsed_time;
 #if USE_MPI
-    elapsed_time = MPI_Wtime() - start;
+        elapsed_time = MPI_Wtime() - start;
 #else
     timeval end;
     gettimeofday(&end, NULL);
     elapsed_time = (double) (end.tv_sec - start.tv_sec) + ((double) (end.tv_usec - start.tv_usec)) / 1'000'000;
 #endif
 
-    double elapsed_timeG;
+        double elapsed_timeG;
 #if USE_MPI
-    MPI_Reduce(&elapsed_time, &elapsed_timeG, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&elapsed_time, &elapsed_timeG, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 #else
     elapsed_timeG = elapsed_time;
 #endif
 
-    cudaProfilerStop();
+        cudaProfilerStop();
 
-    if(myRank == 0)
-        VerifyAndWriteFinalOutput(elapsed_timeG, *locDom, its, nx, numRanks, structured);
+        if(myRank == 0)
+            VerifyAndWriteFinalOutput(elapsed_timeG, *locDom, its, nx, numRanks, structured);
 
 #ifdef SAMI
-    DumpDomain(locDom);
+        DumpDomain(locDom);
 #endif
 
 #if USE_MPI
-    MPI_Finalize();
+        MPI_Finalize();
 #endif
 
-    return 0;
-}
+        return 0;
+    }
