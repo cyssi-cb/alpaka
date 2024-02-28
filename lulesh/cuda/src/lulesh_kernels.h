@@ -54,7 +54,7 @@ namespace lulesh_port_kernels
     using Int_t = std::int32_t;
 
     // this needs adjustment when using float
-    ALPAKA_FN_ACC  auto FABS(Real_t arg1)
+    ALPAKA_FN_ACC auto FABS(Real_t arg1)
     {
         if(arg1 < 0)
             return (arg1 * (-1));
@@ -62,7 +62,7 @@ namespace lulesh_port_kernels
             return arg1;
     }
 
-    ALPAKA_FN_ACC  auto FMAX(Real_t arg1, Real_t arg2) -> Real_t
+    ALPAKA_FN_ACC auto FMAX(Real_t arg1, Real_t arg2) -> Real_t
     {
         return fmax(arg1, arg2);
     }
@@ -355,7 +355,7 @@ namespace lulesh_port_kernels
         return volume;
     }
 
-    ALPAKA_FN_ACC   auto SumElemFaceNormal(
+    ALPAKA_FN_ACC auto SumElemFaceNormal(
         Real_t* normalX0,
         Real_t* normalY0,
         Real_t* normalZ0,
@@ -407,7 +407,7 @@ namespace lulesh_port_kernels
         *normalZ3 += areaZ;
     }
 
-    ALPAKA_FN_ACC   auto VoluDer(
+    ALPAKA_FN_ACC auto VoluDer(
         Real_t const x0,
         Real_t const x1,
         Real_t const x2,
@@ -446,7 +446,7 @@ namespace lulesh_port_kernels
         *dvdz *= twelfth;
     }
 
-    ALPAKA_FN_ACC   auto CalcElemFBHourglassForce(
+    ALPAKA_FN_ACC auto CalcElemFBHourglassForce(
         Real_t* xd,
         Real_t* yd,
         Real_t* zd,
@@ -577,7 +577,7 @@ namespace lulesh_port_kernels
             += coefficient * (hourgam7[i00] * h00 + hourgam7[i01] * h01 + hourgam7[i02] * h02 + hourgam7[i03] * h03);
     }
 
-    ALPAKA_FN_ACC   auto CalcElemNodeNormals(
+    ALPAKA_FN_ACC auto CalcElemNodeNormals(
         Real_t pfx[8],
         Real_t pfy[8],
         Real_t pfz[8],
@@ -749,7 +749,7 @@ namespace lulesh_port_kernels
             z[5]);
     }
 
-    ALPAKA_FN_ACC   auto CalcElemShapeFunctionDerivatives(
+    ALPAKA_FN_ACC auto CalcElemShapeFunctionDerivatives(
         Real_t const* const x,
         Real_t const* const y,
         Real_t const* const z,
@@ -900,12 +900,7 @@ namespace lulesh_port_kernels
         }
     }
 
-    ALPAKA_FN_ACC  auto UpdateVolumesForElems_device(
-        Index_t numElem,
-        Real_t& v_cut,
-        Real_t* vnew,
-        Real_t* v,
-        Index_t i)
+    ALPAKA_FN_ACC auto UpdateVolumesForElems_device(Index_t numElem, Real_t& v_cut, Real_t* vnew, Real_t* v, Index_t i)
     {
         Real_t tmpV;
         tmpV = vnew[i];
@@ -915,7 +910,7 @@ namespace lulesh_port_kernels
         v[i] = tmpV;
     }
 
-    ALPAKA_FN_ACC  auto CalcSoundSpeedForElems_device(
+    ALPAKA_FN_ACC auto CalcSoundSpeedForElems_device(
         Real_t& vnewc,
         Real_t rho0,
         Real_t& enewc,
@@ -939,7 +934,7 @@ namespace lulesh_port_kernels
         ss[iz] = ssTmp;
     }
 
-    ALPAKA_FN_ACC  auto CalcPressureForElems_device(
+    ALPAKA_FN_ACC auto CalcPressureForElems_device(
         Real_t& p_new,
         Real_t& bvc,
         Real_t& pbvc,
@@ -970,7 +965,7 @@ namespace lulesh_port_kernels
         p_new = p_temp;
     }
 
-    ALPAKA_FN_ACC  auto CalcEnergyForElems_device(
+    ALPAKA_FN_ACC auto CalcEnergyForElems_device(
         Real_t& p_new,
         Real_t& e_new,
         Real_t& q_new,
@@ -1103,7 +1098,7 @@ namespace lulesh_port_kernels
         return;
     }
 
-    ALPAKA_FN_ACC  auto CalcHourglassModes(
+    ALPAKA_FN_ACC auto CalcHourglassModes(
         Real_t const xn[8],
         Real_t const yn[8],
         Real_t const zn[8],
@@ -1350,7 +1345,7 @@ namespace lulesh_port_kernels
             &dvdz[7]);
     }
 
-    ALPAKA_FN_ACC  auto giveMyRegion(Index_t const* regCSR, Index_t const i, Index_t const numReg)
+    ALPAKA_FN_ACC auto giveMyRegion(Index_t const* regCSR, Index_t const i, Index_t const numReg)
     {
         for(Index_t reg = 0; reg < numReg - 1; reg++)
             if(i < regCSR[reg])
@@ -2104,28 +2099,28 @@ namespace lulesh_port_kernels
             Real_t rho0,
             Real_t e_cut,
             Real_t emin,
-            Real_t*  ql,
-            Real_t*  qq,
-            Real_t*  vnew,
-            Real_t*  v,
+            Real_t* ql,
+            Real_t* qq,
+            Real_t* vnew,
+            Real_t* v,
             Real_t pmin,
             Real_t p_cut,
             Real_t q_cut,
             Real_t eosvmin,
             Real_t eosvmax,
-            Index_t*  regElemlist,
+            Index_t* regElemlist,
+            Real_t* e,
             //        const Index_t*  regElemlist,
-            Real_t*  e,
-            Real_t*  delv,
-            Real_t*  p,
-            Real_t*  q,
+            Real_t* delv,
+            Real_t* p,
+            Real_t* q,
             Real_t ss4o3,
-            Real_t*  ss,
+            Real_t* ss,
             Real_t v_cut,
-            Real_t*  constraints,
+            Real_t* constraints,
             Int_t const cost,
-            Index_t const*  regCSR,
-            Index_t const*  regReps,
+            Index_t const* regCSR,
+            Index_t const* regReps,
             Index_t const numReg) const -> void
         {
             /*using Dim = alpaka::Dim<TAcc>;
@@ -2265,30 +2260,30 @@ namespace lulesh_port_kernels
         Index_t numNode;
         Real_t deltatime;
         Real_t u_cut;
-        Real_t*  x;
-        Real_t*  y;
-        Real_t*  z;
-        Real_t*  xd;
-        Real_t*  yd;
-        Real_t*  zd;
-        Real_t const*  xdd;
-        Real_t const*  ydd;
-        Real_t const*  zdd;
+        Real_t* x;
+        Real_t* y;
+        Real_t* z;
+        Real_t* xd;
+        Real_t* yd;
+        Real_t* zd;
+        Real_t const* xdd;
+        Real_t const* ydd;
+        Real_t const* zdd;
 
     public:
         CalcPositionAndVelocityForNodes_kernel_class(
             Index_t numNode,
             Real_t const deltatime,
             Real_t const u_cut,
-            Real_t*  x,
-            Real_t*  y,
-            Real_t*  z,
-            Real_t*  xd,
-            Real_t*  yd,
-            Real_t*  zd,
-            Real_t const*  xdd,
-            Real_t const*  ydd,
-            Real_t const*  zdd)
+            Real_t* x,
+            Real_t* y,
+            Real_t* z,
+            Real_t* xd,
+            Real_t* yd,
+            Real_t* zd,
+            Real_t const* xdd,
+            Real_t const* ydd,
+            Real_t const* zdd)
         {
             this->numNode = numNode;
             this->deltatime = deltatime;
@@ -2513,7 +2508,7 @@ namespace lulesh_port_kernels
     // TODO: Rewrite this kernel with template parameter
     class CalcVolumeForceForElems_kernel_class
     {
-        Real_t*  volo, *  v, *  p, *  q;
+        Real_t *volo, *v, *p, *q;
         Real_t hourg;
         Index_t numElem;
         Index_t padded_numElem;
@@ -2522,17 +2517,17 @@ namespace lulesh_port_kernels
         Real_t *ss, *x, *y, *z, *xd, *yd, *zd, *fx_elem, *fy_elem, *fz_elem;
 
         Real_t coefficient;
-        Real_t*  constraints; // bad vol index 2
+        Real_t* constraints; // bad vol index 2
         Index_t num_threads;
         bool hour_gt_zero;
 
     public:
         CalcVolumeForceForElems_kernel_class(
 
-            Real_t*  volo,
-            Real_t*  v,
-            Real_t*  p,
-            Real_t*  q,
+            Real_t* volo,
+            Real_t* v,
+            Real_t* p,
+            Real_t* q,
             Real_t hourg,
             Index_t numElem,
             Index_t padded_numElem,
@@ -2725,29 +2720,29 @@ namespace lulesh_port_kernels
     {
         Index_t numElem, padded_numElem;
         Real_t const dt;
-        Index_t const*  nodelist;
-        Real_t const*  volo, *  v;
+        Index_t const* nodelist;
+        Real_t const *volo, *v;
 
-        Real_t const*  x;
-        Real_t const*  y;
-        Real_t const*  z;
-        Real_t const*  xd;
-        Real_t const*  yd;
-        Real_t const*  zd;
-        Real_t*  vnew;
-        Real_t*  delv;
+        Real_t const* x;
+        Real_t const* y;
+        Real_t const* z;
+        Real_t const* xd;
+        Real_t const* yd;
+        Real_t const* zd;
+        Real_t* vnew;
+        Real_t* delv;
         Real_t* arealg;
-        Real_t*  dxx;
-        Real_t*  dyy;
-        Real_t*  dzz;
-        Real_t*  vdov;
-        Real_t*  delx_zeta;
-        Real_t*  delv_zeta;
-        Real_t*  delx_xi;
-        Real_t*  delv_xi;
-        Real_t*  delx_eta;
-        Real_t*  delv_eta;
-        Real_t*  constraints;
+        Real_t* dxx;
+        Real_t* dyy;
+        Real_t* dzz;
+        Real_t* vdov;
+        Real_t* delx_zeta;
+        Real_t* delv_zeta;
+        Real_t* delx_xi;
+        Real_t* delv_xi;
+        Real_t* delx_eta;
+        Real_t* delv_eta;
+        Real_t* constraints;
         Index_t const num_threads;
 
     public:
@@ -2755,30 +2750,30 @@ namespace lulesh_port_kernels
             Index_t numElem,
             Index_t padded_numElem,
             Real_t const dt,
-            Index_t const*  nodelist,
-            Real_t const*  volo,
-            Real_t const*  v,
+            Index_t const* nodelist,
+            Real_t const* volo,
+            Real_t const* v,
 
-            Real_t const*  x,
-            Real_t const*  y,
-            Real_t const*  z,
-            Real_t const*  xd,
-            Real_t const*  yd,
-            Real_t const*  zd,
-            Real_t*  vnew,
-            Real_t*  delv,
+            Real_t const* x,
+            Real_t const* y,
+            Real_t const* z,
+            Real_t const* xd,
+            Real_t const* yd,
+            Real_t const* zd,
+            Real_t* vnew,
+            Real_t* delv,
             Real_t* arealg,
-            Real_t*  dxx,
-            Real_t*  dyy,
-            Real_t*  dzz,
-            Real_t*  vdov,
-            Real_t*  delx_zeta,
-            Real_t*  delv_zeta,
-            Real_t*  delx_xi,
-            Real_t*  delv_xi,
-            Real_t*  delx_eta,
-            Real_t*  delv_eta,
-            Real_t*  constraints,
+            Real_t* dxx,
+            Real_t* dyy,
+            Real_t* dzz,
+            Real_t* vdov,
+            Real_t* delx_zeta,
+            Real_t* delv_zeta,
+            Real_t* delx_xi,
+            Real_t* delv_xi,
+            Real_t* delx_eta,
+            Real_t* delv_eta,
+            Real_t* constraints,
             Index_t const num_threads)
             : numElem(numElem)
             , padded_numElem(padded_numElem)

@@ -27,6 +27,6 @@ add_executable(${_TARGET_NAME} ${LULESH_SOURCES})
 target_link_libraries(
     ${_TARGET_NAME}
     PUBLIC alpaka::alpaka)
-set_target_properties(${_TARGET_NAME} PROPERTIES CUDA_ARCHITECTURES "50;60;72")
+set_target_properties(${_TARGET_NAME} PROPERTIES CUDA_ARCHITECTURES "60")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)

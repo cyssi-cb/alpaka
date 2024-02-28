@@ -4700,7 +4700,6 @@ __global__ void ApplyMaterialPropertiesAndUpdateVolume_kernel(
         qq_temp = qq[zidx];
         ql_temp = ql[zidx];
         delvc_temp = delv[zidx];
-
         for(int r = 0; r < rep; r++)
         {
             e_old = e_temp;
