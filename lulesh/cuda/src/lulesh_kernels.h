@@ -986,9 +986,9 @@ namespace lulesh_port_kernels
         Real_t emin,
         Real_t& qq,
         Real_t& ql,
-        Real_t rho0,
-        Real_t eosvmax,
-        Index_t length)
+        Real_t& rho0,
+        Real_t& eosvmax,
+        Index_t length)-> void
     {
         Real_t const sixth = Real_t(1.0) / Real_t(6.0);
         Real_t pHalfStep;
@@ -2050,48 +2050,6 @@ namespace lulesh_port_kernels
     public:
         ApplyMaterialPropertiesAndUpdateVolume_kernel_class(){};
 
-        /*ApplyMaterialPropertiesAndUpdateVolume_kernel_class(
-            Index_t length, Real_t rho0, Real_t e_cut, Real_t emin,
-            Real_t * ql, Real_t * qq,
-            Real_t * vnew, Real_t * v, Real_t pmin,
-            Real_t p_cut, Real_t q_cut, Real_t eosvmin, Real_t eosvmax,
-            Index_t * regElemlist,
-            //        const Index_t*  regElemlist,
-            Real_t * e, Real_t * delv, Real_t * p,
-            Real_t * q, Real_t ss4o3, Real_t * ss,
-            Real_t v_cut, Real_t * constraints, const Int_t cost,
-            const Index_t *regCSR, const Index_t *regReps, const Index_t numReg
-
-            )
-            : numReg(numReg), cost(cost), eosvmin(eosvmin) {
-          this->length = length;
-          this->rho0 = rho0;
-          this->e_cut = e_cut;
-          this->emin = emin;
-          this->ql = ql;
-          this->qq = qq;
-          this->vnew = vnew;
-          this->v = v;
-          this->pmin = pmin;
-          this->p_cut = p_cut;
-          this->q_cut = q_cut;
-          // this->eosvmin=eosvmin;
-          this->eosvmax = eosvmax;
-          this->regElemlist = regElemlist;
-          //        const Index_t*  regElemlist,
-          this->e = e;
-          this->delv = delv, this->p = p;
-          this->q = q;
-          this->ss4o3 = ss4o3;
-          this->ss = ss;
-          this->v_cut = v_cut;
-          this->constraints = constraints;
-          // this->cost=cost;
-          this->regCSR = regCSR;
-          this->regReps = regReps;
-          // this->numReg=numReg;
-        };*/
-
         template<typename TAcc>
         ALPAKA_FN_ACC auto operator()(
             TAcc const& acc,
@@ -2123,19 +2081,6 @@ namespace lulesh_port_kernels
             Index_t const* regReps,
             Index_t const numReg) const -> void
         {
-            /*using Dim = alpaka::Dim<TAcc>;
-            using Idx = alpaka::Idx<TAcc>;
-            using Vec = alpaka::Vec<Dim, Idx>;
-            using Vec1 = alpaka::Vec<alpaka::DimInt<1u>, Idx>;*/
-
-            // Vec const globalThreadIdx =
-            // alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-            // printf("global ThreadIdx %d,%d\n",globalThreadIdx[0],globalThreadIdx[1]);
-            // Vec const globalThreadExtent =
-            // alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc)[0];
-            // printf("global ThreadExtent %d,%d\n",globalThreadExtent[0],globalThreadExtent[1]);
-            // Vec1 const linearizedGlobalThreadIdx =
-            // alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
             Index_t i = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc)[0];
             // Index_t i = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
 
@@ -2149,18 +2094,8 @@ namespace lulesh_port_kernels
             {
                 Index_t zidx = regElemlist[i];
 
-                lulesh_port_kernels::ApplyMaterialPropertiesForElems_device(
-                    eosvmin,
-                    eosvmax,
-                    vnew,
-                    v,
-                    vnewc,
-                    constraints,
-                    zidx);
-                /********************** Start EvalEOSForElems **************************/
-                // Here we need to find out what region this element belongs to and what
-                // is the rep value!
-                Index_t region = lulesh_port_kernels::giveMyRegion(regCSR, i, numReg);
+                ApplyMaterialPropertiesForElems_device(eosvmin, eosvmax, vnew, v, vnewc, constraints, zidx);
+                Index_t region = giveMyRegion(regCSR, i, numReg);
                 Index_t rep = regReps[region];
 
                 e_temp = e[zidx];
@@ -2169,7 +2104,6 @@ namespace lulesh_port_kernels
                 qq_temp = qq[zidx];
                 ql_temp = ql[zidx];
                 delvc_temp = delv[zidx];
-
                 for(int r = 0; r < rep; r++)
                 {
                     e_old = e_temp;
@@ -2188,24 +2122,19 @@ namespace lulesh_port_kernels
                     if(eosvmin != Real_t(0.))
                     {
                         if(vnewc <= eosvmin)
-                        { /* impossible due to calling func? */
+                        {
                             compHalfStep = compression;
                         }
                     }
                     if(eosvmax != Real_t(0.))
                     {
                         if(vnewc >= eosvmax)
-                        { /* impossible due to calling func? */
+                        {
                             p_old = Real_t(0.);
                             compression = Real_t(0.);
                             compHalfStep = Real_t(0.);
                         }
                     }
-
-                    //    qq_old = qq[zidx] ;
-                    //    ql_old = ql[zidx] ;
-                    //    work = Real_t(0.) ;
-
                     lulesh_port_kernels::CalcEnergyForElems_device(
                         p_new,
                         e_new,
@@ -2247,9 +2176,6 @@ namespace lulesh_port_kernels
                     length,
                     ss,
                     zidx);
-
-                /********************** End EvalEOSForElems **************************/
-
                 lulesh_port_kernels::UpdateVolumesForElems_device(length, v_cut, vnew, v, zidx);
             }
         };

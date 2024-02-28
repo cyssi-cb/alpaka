@@ -2281,7 +2281,6 @@ printf(
             domain->regCSR.raw(),
             domain->regReps.raw(),
             domain->numReg);
-
 #else
 
         ApplyMaterialPropertiesAndUpdateVolume_kernel<<<dimGrid, dimBlock>>>(
@@ -3229,7 +3228,7 @@ int main(int argc, char* argv[])
     gettimeofday(&start, NULL);
 #endif
 
-    while(locDom->time_h < locDom->stoptime)
+    while(true)
     {
         // this has been moved after computation of volume forces to hide launch
         // latencies

@@ -4689,8 +4689,6 @@ __global__ void ApplyMaterialPropertiesAndUpdateVolume_kernel(
         Index_t zidx = regElemlist[i];
 
         ApplyMaterialPropertiesForElems_device(eosvmin, eosvmax, vnew, v, vnewc, bad_vol, zidx);
-        /********************** Start EvalEOSForElems   **************************/
-        // Here we need to find out what region this element belongs to and what is the rep value!
         Index_t region = giveMyRegion(regCSR, i, numReg);
         Index_t rep = regReps[region];
 
@@ -4718,23 +4716,19 @@ __global__ void ApplyMaterialPropertiesAndUpdateVolume_kernel(
             if(eosvmin != Real_t(0.))
             {
                 if(vnewc <= eosvmin)
-                { /* impossible due to calling func? */
+                {
                     compHalfStep = compression;
                 }
             }
             if(eosvmax != Real_t(0.))
             {
                 if(vnewc >= eosvmax)
-                { /* impossible due to calling func? */
+                {
                     p_old = Real_t(0.);
                     compression = Real_t(0.);
                     compHalfStep = Real_t(0.);
                 }
             }
-
-            //    qq_old = qq[zidx] ;
-            //    ql_old = ql[zidx] ;
-            //    work = Real_t(0.) ;
 
             CalcEnergyForElems_device(
                 p_new,
@@ -4760,15 +4754,12 @@ __global__ void ApplyMaterialPropertiesAndUpdateVolume_kernel(
                 rho0,
                 eosvmax,
                 length);
-        } // end for rep
+        }
 
         p[zidx] = p_new;
         e[zidx] = e_new;
         q[zidx] = q_new;
-
         CalcSoundSpeedForElems_device(vnewc, rho0, e_new, p_new, pbvc, bvc, ss4o3, length, ss, zidx);
-
-        /********************** End EvalEOSForElems     **************************/
 
         UpdateVolumesForElems_device(length, v_cut, vnew, v, zidx);
     }
@@ -5685,7 +5676,7 @@ int main(int argc, char* argv[])
     gettimeofday(&start, NULL);
 #endif
 
-    while(locDom->time_h < locDom->stoptime)
+    while(true)
     {
         // this has been moved after computation of volume forces to hide launch latencies
         // TimeIncrement(locDom) ;
