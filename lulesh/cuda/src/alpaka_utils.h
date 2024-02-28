@@ -28,9 +28,9 @@ namespace alpaka_utils
         using Vec2_ = alpaka::Vec<alpaka::DimInt<2>, std::size_t>;
         using Queue_ = alpaka::Queue<Acc, alpaka::Blocking>;
 
-        static auto const devAcc = std::make_shared<alpaka::Dev<Acc>>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0));
+        auto const devAcc = std::make_shared<alpaka::Dev<Acc>>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0));
 
-        static Queue_ queue(*devAcc);
+        Queue_ queue(*devAcc);
         auto const elementsPerThread = alpaka::Vec<Dim, Idx>::all(static_cast<Idx>(1));
         using WorkDiv = alpaka::WorkDivMembers<alpaka::DimInt<1>, Idx>;
         auto const workDiv = WorkDiv{Idx(threadsPerGrid[1u]), Idx(threadsPerGrid[0u]), Idx(1)};
