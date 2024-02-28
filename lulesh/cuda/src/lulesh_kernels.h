@@ -1474,7 +1474,7 @@ namespace lulesh_port_kernels
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
             Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
-            Index_t ielem = _cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+            Index_t ielem = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
 
             if(ielem < elength)
             {
@@ -1709,8 +1709,8 @@ namespace lulesh_port_kernels
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
             Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
-            Index_t i = _cast<Index_t>(linearizedGlobalThreadIdx[0u]);
-            Index_t tid = _cast<Index_t>(globalThreadIdx[0u]);
+            Index_t i = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+            Index_t tid = static_cast<Index_t>(globalThreadIdx[0u]);
 
             auto& s_data = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
 
@@ -1909,7 +1909,7 @@ namespace lulesh_port_kernels
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
             Index_t thread_total = globalThreadExtent[0u];
             Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
-            Index_t i = _cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+            Index_t i = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
             Index_t tid = i % block_size;
 
             auto& s_mindthydro = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
@@ -2042,9 +2042,9 @@ namespace lulesh_port_kernels
             // Store in global memory
             if(tid == 0)
             {
-                dev_mindtcourant[_cast<Index_t>((((i % thread_total) + block_size) / block_size) - 1)]
+                dev_mindtcourant[static_cast<Index_t>((((i % thread_total) + block_size) / block_size) - 1)]
                     = s_mindtcourant[0];
-                dev_mindthydro[_cast<Index_t>((((i % thread_total) + block_size) / block_size) - 1)]
+                dev_mindthydro[static_cast<Index_t>((((i % thread_total) + block_size) / block_size) - 1)]
                     = s_mindthydro[0];
             }
         };
@@ -2142,7 +2142,7 @@ namespace lulesh_port_kernels
             // Vec1 const linearizedGlobalThreadIdx =
             // alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
             Index_t i = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc)[0];
-            // Index_t i = _cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+            // Index_t i = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
 
             Real_t e_old, delvc, p_old, q_old, e_temp, delvc_temp, p_temp, q_temp;
             Real_t compression, compHalfStep;
@@ -2315,7 +2315,7 @@ namespace lulesh_port_kernels
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
             Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
-            Index_t i = _cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+            Index_t i = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
 
             if(i < numNode)
             {
@@ -2369,7 +2369,7 @@ namespace lulesh_port_kernels
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
             Vec1 const linearizedGlobalThreadIdx = alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent);
-            Index_t tid = _cast<Index_t>(linearizedGlobalThreadIdx[0u]);
+            Index_t tid = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
 
             if(tid < numNodeBC)
             {
@@ -2420,7 +2420,7 @@ namespace lulesh_port_kernels
 
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
-            Index_t tid = _cast<Index_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+            Index_t tid = static_cast<Index_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
             if(tid < numNode)
             {
                 Real_t one_over_nMass = Real_t(1.) / nodalMass[tid];
@@ -2485,7 +2485,7 @@ namespace lulesh_port_kernels
 
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
-            Int_t tid = _cast<Int_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+            Int_t tid = static_cast<Int_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
 
             if(tid < num_threads)
             {
@@ -2600,7 +2600,7 @@ namespace lulesh_port_kernels
 
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
-            Index_t elem = _cast<Index_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+            Index_t elem = static_cast<Index_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
 
             if(elem < num_threads)
             {
@@ -2827,7 +2827,7 @@ namespace lulesh_port_kernels
 
             Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
             Vec const globalThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
-            Index_t k = _cast<Index_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
+            Index_t k = static_cast<Index_t>(alpaka::mapIdx<1u>(globalThreadIdx, globalThreadExtent)[0u]);
 
             if(k < num_threads)
             {

@@ -1799,7 +1799,7 @@ __global__ void CalcAccelerationForNodes_kernel(
  inline void CalcAccelerationForNodes(Domain* domain)
 {
     int const dimBlock = 128;
-    int dimGrid = PAD_DIV(_cast<int>(domain->numNode), dimBlock);
+    int dimGrid = PAD_DIV(static_cast<int>(domain->numNode), dimBlock);
     // cudaCheckError();
 
 #ifdef ALPAKA
