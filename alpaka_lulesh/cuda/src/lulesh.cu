@@ -2242,17 +2242,17 @@ printf(
         Index_t dimGrid = PAD_DIV(length, dimBlock);
 
 #ifdef ALPAKA
-        using ApplyMaterialPropertiesAndUpdateVolume
+        using ApplyMaterialProperties
             = lulesh_port_kernels::ApplyMaterialPropertiesAndUpdateVolume_kernel_class;
         // cudaCheckError();
-        ApplyMaterialPropertiesAndUpdateVolume ApplyMaterialPropertiesAndUpdateVolumeKernel;
+        ApplyMaterialProperties applyMaterialProperties;
 
         using Dim2 = alpaka::DimInt<2>;
         using Idx = std::size_t;
         using Vec2 = alpaka::Vec<Dim2, Idx>;
         // cudaCheckError();
         alpaka_utils::alpakaExecuteBaseKernel<Dim2, Idx>(
-            ApplyMaterialPropertiesAndUpdateVolumeKernel,
+            applyMaterialProperties,
             Vec2{dimBlock, dimGrid},
             true,
             length,

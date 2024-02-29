@@ -3,12 +3,6 @@
 #include <stdint.h>
 
 #include <iostream>
-#define CUDA_SQRT
-#define Real_t double
-#define Real_tp double*
-
-/* Stuff needed for boundary conditions */
-/* 2 BCs on each of 6 hexahedral faces (12 bits) */
 #define XI_M 0x0'0007
 #define XI_M_SYMM 0x0'0001
 #define XI_M_FREE 0x0'0002
@@ -41,7 +35,7 @@
 
 #define VOLUDER(a0, a1, a2, a3, a4, a5, b0, b1, b2, b3, b4, b5, dvdc)                                                 \
     {                                                                                                                 \
-        const Real_t twelfth = Real_t(1.0) / Real_t(12.0);                                                            \
+        const double twelfth = double(1.0) / double(12.0);                                                            \
                                                                                                                       \
         dvdc = ((a1) + (a2)) * ((b0) + (b1)) - ((a0) + (a1)) * ((b1) + (b2)) + ((a0) + (a4)) * ((b3) + (b4))          \
                - ((a3) + (a4)) * ((b0) + (b4)) - ((a2) + (a5)) * ((b3) + (b5)) + ((a3) + (a5)) * ((b2) + (b5));       \
@@ -53,41 +47,37 @@ namespace lulesh_port_kernels
 
     using Index_t = std::int32_t;
     using Int_t = std::int32_t;
-    template<typename T>
-    ALPAKA_FN_ACC auto SQRT(T x) -> T
+    template<typename T,typename Acc>
+    ALPAKA_FN_ACC auto SQRT(Acc const &acc, T x) -> T
     {
-        #ifdef GPU_ALP_SQRT
-            return alpaka::math::sqrt(alpaka::math::SqrtUniformCudaHipBuiltIn(), x);
-            
-        #else 
-        #ifdef CUDA_SQRT
-            return alpaka::math::sqrt(alpaka::math::ConceptMathSqrt(), x);
-        #else
-            return alpaka::math::sqrt(alpaka::math::SqrtStdLib(), x);
-        #endif
-        #endif
+       return alpaka::math::sqrt(acc,x);
     };
-    // this needs adjustment when using float
-    template<typename T>
-    ALPAKA_FN_ACC auto FABS(const T arg1) -> T
+
+    template<typename T,typename Acc>
+    ALPAKA_FN_ACC auto FABS(Acc const &acc,const T arg1) -> T
     {
-        return alpaka::math::abs(alpaka::math::AbsUniformCudaHipBuiltIn(),arg1);
+        return alpaka::math::abs(acc,arg1);
     }
-    template<typename T>
-    ALPAKA_FN_ACC auto FMAX(const T arg1,const T arg2) -> T
+    template<typename T,typename Acc>
+    ALPAKA_FN_ACC auto FMAX(Acc const &acc,const T arg1,const T arg2) -> T
     {
-        return alpaka::math::max(alpaka::math::MaxUniformCudaHipBuiltIn(), arg1,arg2);
+        return alpaka::math::max(acc, arg1,arg2);
     }
     
-    template<typename T>
-    ALPAKA_FN_ACC auto CBRT(const T arg1) -> T
+    template<typename T,typename Acc>
+    ALPAKA_FN_ACC auto CBRT(Acc const &acc,const T arg1) -> T
     {
-        return alpaka::math::cbrt(alpaka::math::FmaUniformCudaHipBuiltIn(), arg1);
+        return alpaka::math::cbrt(acc, arg1);
     }
-    template<typename T>
-    ALPAKA_FN_ACC auto FMA(T arg1,T arg2, T arg3) -> T
+    template<typename T,typename Acc>
+    ALPAKA_FN_ACC auto FMA(Acc const &acc,T arg1,T arg2, T arg3) -> T
     {
-        return alpaka::math::fma(alpaka::math::FmaUniformCudaHipBuiltIn(), arg1,arg2,arg3);
+        return alpaka::math::fma(acc, arg1,arg2,arg3);
+    }
+    template<typename T,typename Acc>
+    ALPAKA_FN_ACC auto FMIN(Acc const &acc,const T arg1, const T arg2) -> T
+    {
+        return alpaka::math::min(acc, arg1,arg2);
     }
 
     ALPAKA_FN_ACC auto AreaFace(
@@ -166,8 +156,9 @@ namespace lulesh_port_kernels
         d[4] = Real_t(.5) * (dxddz + dzddx);
         d[3] = Real_t(.5) * (dzddy + dyddz);
     }
-
+    template<typename Acc>
     ALPAKA_FN_ACC auto CalcMonoGradient(
+        Acc const &acc,
         Real_t* x,
         Real_t* y,
         Real_t* z,
@@ -206,7 +197,7 @@ namespace lulesh_port_kernels
         ay = dzi * dxj - dxi * dzj;
         az = dxi * dyj - dyi * dxj;
 
-        *delx_zeta = vol / SQRT(ax * ax + ay * ay + az * az + ptiny);
+        *delx_zeta = vol / SQRT(acc,ax * ax + ay * ay + az * az + ptiny);
 
         ax *= norm;
         ay *= norm;
@@ -224,7 +215,7 @@ namespace lulesh_port_kernels
         ay = dzj * dxk - dxj * dzk;
         az = dxj * dyk - dyj * dxk;
 
-        *delx_xi = vol / SQRT(ax * ax + ay * ay + az * az + ptiny);
+        *delx_xi = vol / SQRT(acc,ax * ax + ay * ay + az * az + ptiny);
 
         ax *= norm;
         ay *= norm;
@@ -242,7 +233,7 @@ namespace lulesh_port_kernels
         ay = dzk * dxi - dxk * dzi;
         az = dxk * dyi - dyk * dxi;
 
-        *delx_eta = vol / SQRT(ax * ax + ay * ay + az * az + ptiny);
+        *delx_eta = vol / SQRT(acc,ax * ax + ay * ay + az * az + ptiny);
 
         ax *= norm;
         ay *= norm;
@@ -255,8 +246,9 @@ namespace lulesh_port_kernels
         *delv_eta = ax * dxv + ay * dyv + az * dzv;
 #undef SUM4
     }
-
+    template<typename Acc>
     ALPAKA_FN_ACC auto CalcElemCharacteristicLength(
+        Acc const &acc,
         Real_t const x[8],
         Real_t const y[8],
         Real_t const z[8],
@@ -266,24 +258,24 @@ namespace lulesh_port_kernels
 
         a = lulesh_port_kernels::
             AreaFace(x[0], x[1], x[2], x[3], y[0], y[1], y[2], y[3], z[0], z[1], z[2], z[3]); // 38
-        charLength = lulesh_port_kernels::FMAX(a, charLength);
+        charLength = lulesh_port_kernels::FMAX(acc,a, charLength);
 
         a = lulesh_port_kernels::AreaFace(x[4], x[5], x[6], x[7], y[4], y[5], y[6], y[7], z[4], z[5], z[6], z[7]);
-        charLength = lulesh_port_kernels::FMAX(a, charLength);
+        charLength = lulesh_port_kernels::FMAX(acc,a, charLength);
 
         a = lulesh_port_kernels::AreaFace(x[0], x[1], x[5], x[4], y[0], y[1], y[5], y[4], z[0], z[1], z[5], z[4]);
-        charLength = lulesh_port_kernels::FMAX(a, charLength);
+        charLength = lulesh_port_kernels::FMAX(acc,a, charLength);
 
         a = lulesh_port_kernels::AreaFace(x[1], x[2], x[6], x[5], y[1], y[2], y[6], y[5], z[1], z[2], z[6], z[5]);
-        charLength = lulesh_port_kernels::FMAX(a, charLength);
+        charLength = lulesh_port_kernels::FMAX(acc,a, charLength);
 
         a = lulesh_port_kernels::AreaFace(x[2], x[3], x[7], x[6], y[2], y[3], y[7], y[6], z[2], z[3], z[7], z[6]);
-        charLength = lulesh_port_kernels::FMAX(a, charLength);
+        charLength = lulesh_port_kernels::FMAX(acc,a, charLength);
 
         a = lulesh_port_kernels::AreaFace(x[3], x[0], x[4], x[7], y[3], y[0], y[4], y[7], z[3], z[0], z[4], z[7]);
-        charLength = lulesh_port_kernels::FMAX(a, charLength);
+        charLength = lulesh_port_kernels::FMAX(acc,a, charLength);
 
-        charLength = Real_t(4.0) * volume / SQRT(charLength);
+        charLength = Real_t(4.0) * volume / SQRT(acc,charLength);
 
         return charLength;
     }
@@ -745,7 +737,7 @@ namespace lulesh_port_kernels
             y[0],
             z[0]);
         /* evaluate face six: nodes 4, 7, 6, 5 */
-        lulesh_port_kernels::SumElemFaceNormal(
+        lulesh_port_kernels::SumElemFaceNormal( //no acc
             &pfx[4],
             &pfy[4],
             &pfz[4],
@@ -922,18 +914,19 @@ namespace lulesh_port_kernels
             constraints[2] = zn;
         }
     }
-
-    ALPAKA_FN_ACC auto UpdateVolumesForElems_device(Index_t numElem, Real_t& v_cut, Real_t* vnew, Real_t* v, Index_t i)
+     template<typename Acc>
+    ALPAKA_FN_ACC auto UpdateVolumesForElems_device(const Acc & acc,Index_t numElem, Real_t& v_cut, Real_t* vnew, Real_t* v, Index_t i)
     {
         Real_t tmpV;
         tmpV = vnew[i];
 
-        if(FABS(tmpV - Real_t(1.0)) < v_cut)
+        if(FABS(acc,tmpV - Real_t(1.0)) < v_cut)
             tmpV = Real_t(1.0);
         v[i] = tmpV;
     }
-
+    template<typename Acc>
     ALPAKA_FN_ACC auto CalcSoundSpeedForElems_device(
+        const Acc & acc,
         Real_t& vnewc,
         Real_t rho0,
         Real_t& enewc,
@@ -945,20 +938,20 @@ namespace lulesh_port_kernels
         Real_t* ss,
         Index_t iz)
     {
-        /Real_t ssTmp=(pbvc * enewc + vnewc * vnewc * bvc * pnewc) / rho0
-        //Real_t ssTmp = FMA(pbvc,enewc,vnewc * vnewc * bvc * pnewc)/ rho0;
+        Real_t ssTmp=(pbvc * enewc + vnewc * vnewc * bvc * pnewc) / rho0;
         if(ssTmp <= Real_t(.1111111e-36))
         {
             ssTmp = Real_t(.3333333e-18);
         }
         else
         {
-            ssTmp = SQRT(ssTmp);
+            ssTmp = SQRT(acc,ssTmp);
         }
         ss[iz] = ssTmp;
     }
-
+    template<typename Acc>
     ALPAKA_FN_ACC auto CalcPressureForElems_device(
+        const Acc & acc,
         Real_t& p_new,
         Real_t& bvc,
         Real_t& pbvc,
@@ -977,7 +970,7 @@ namespace lulesh_port_kernels
 
         p_temp = bvc * e_old;
 
-        if(FABS(p_temp) < p_cut)
+        if(FABS(acc,p_temp) < p_cut)
             p_temp = Real_t(0.0);
 
         if(vnewc >= eosvmax) /* impossible condition here? */
@@ -988,8 +981,9 @@ namespace lulesh_port_kernels
 
         p_new = p_temp;
     }
-
+    template<typename Acc>
     ALPAKA_FN_ACC auto CalcEnergyForElems_device(
+        const Acc & acc,
         Real_t& p_new,
         Real_t& e_new,
         Real_t& q_new,
@@ -1025,7 +1019,7 @@ namespace lulesh_port_kernels
             e_new = emin;
         }
 
-        CalcPressureForElems_device(pHalfStep, bvc, pbvc, e_new, compHalfStep, vnewc, pmin, p_cut, eosvmax);
+        CalcPressureForElems_device(acc,pHalfStep, bvc, pbvc, e_new, compHalfStep, vnewc, pmin, p_cut, eosvmax);
 
         Real_t vhalf = Real_t(1.) / (Real_t(1.) + compHalfStep);
 
@@ -1053,7 +1047,7 @@ namespace lulesh_port_kernels
                     clock_offset = clock() - start_clock;
                 }
                 ssc = ssc/2;*/
-                ssc = SQRT(ssc);
+                ssc = SQRT(acc,ssc);
             }
 
             q_new = (ssc * ql + qq);
@@ -1063,7 +1057,7 @@ namespace lulesh_port_kernels
 
         e_new += Real_t(0.5) * work;
 
-        if(FABS(e_new) < e_cut)
+        if(FABS(acc,e_new) < e_cut)
         {
             e_new = Real_t(0.);
         }
@@ -1072,7 +1066,7 @@ namespace lulesh_port_kernels
             e_new = emin;
         }
 
-        CalcPressureForElems_device(p_new, bvc, pbvc, e_new, compression, vnewc, pmin, p_cut, eosvmax);
+        CalcPressureForElems_device(acc, p_new, bvc, pbvc, e_new, compression, vnewc, pmin, p_cut, eosvmax);
 
         Real_t q_tilde;
 
@@ -1100,7 +1094,7 @@ namespace lulesh_port_kernels
                     clock_offset = clock() - start_clock;
                 }
                 ssc = ssc/2;*/
-                ssc = SQRT(ssc);
+                ssc = SQRT(acc,ssc);
             }
 
             q_tilde = (ssc * ql + qq);
@@ -1110,7 +1104,7 @@ namespace lulesh_port_kernels
                 - (Real_t(7.0) * (p_old + q_old) - Real_t(8.0) * (pHalfStep + q_new) + (p_new + q_tilde)) * delvc
                       * sixth;
 
-        if(FABS(e_new) < e_cut)
+        if(FABS(acc,e_new) < e_cut)
         {
 
             e_new = Real_t(0.);
@@ -1120,7 +1114,7 @@ namespace lulesh_port_kernels
             e_new = emin;
         }
 
-        CalcPressureForElems_device(p_new, bvc, pbvc, e_new, compression, vnewc, pmin, p_cut, eosvmax);
+        CalcPressureForElems_device(acc, p_new, bvc, pbvc, e_new, compression, vnewc, pmin, p_cut, eosvmax);
 
         if(delvc <= Real_t(0.))
         {
@@ -1142,12 +1136,12 @@ namespace lulesh_port_kernels
                     clock_offset = clock() - start_clock;
                 }
                 ssc = ssc/2;*/
-                ssc = SQRT(ssc);
+                ssc = SQRT(acc,ssc);
             }
 
-            q_new = FMA(ssc,ql,qq);
+            q_new = FMA(acc,ssc,ql,qq);
 
-            if(FABS(q_new) < q_cut)
+            if(FABS(acc,q_new) < q_cut)
                 q_new = Real_t(0.);
         }
 
@@ -1214,7 +1208,7 @@ namespace lulesh_port_kernels
         hourgam[6][3] = 1.0 - volinv * (dvdxn[6] * hourmodx + dvdyn[6] * hourmody + dvdzn[6] * hourmodz);
         hourgam[7][3] = -1.0 - volinv * (dvdxn[7] * hourmodx + dvdyn[7] * hourmody + dvdzn[7] * hourmodz);
     }
-
+    //no acc
     ALPAKA_FN_ACC auto CalcElemVolumeDerivative(
         Real_t dvdx[8],
         Real_t dvdy[8],
@@ -1764,7 +1758,7 @@ namespace lulesh_port_kernels
             Index_t tid = static_cast<Index_t>(globalThreadIdx[0u]);
 
             auto& s_data = alpaka::declareSharedVar<Real_t[block_size], __COUNTER__>(acc);
-
+            const Index_t array[] = {32, 16, 8, 4, 2, 1};
             if(tid < block_size)
             {
                 if(tid < shared_array_size)
@@ -1781,7 +1775,7 @@ namespace lulesh_port_kernels
                 {
                     if(tid < 512)
                     {
-                        s_data[tid] = min(s_data[tid], s_data[tid + 512]);
+                        s_data[tid] = FMIN(acc,s_data[tid], s_data[tid + 512]);
                     }
                     alpaka::syncBlockThreads(acc);
                 }
@@ -1789,7 +1783,7 @@ namespace lulesh_port_kernels
                 {
                     if(tid < 256)
                     {
-                        s_data[tid] = min(s_data[tid], s_data[tid + 256]);
+                        s_data[tid] = FMIN(acc,s_data[tid], s_data[tid + 256]);
                     }
                     alpaka::syncBlockThreads(acc);
                 }
@@ -1797,7 +1791,7 @@ namespace lulesh_port_kernels
                 {
                     if(tid < 128)
                     {
-                        s_data[tid] = min(s_data[tid], s_data[tid + 128]);
+                        s_data[tid] = FMIN(acc,s_data[tid], s_data[tid + 128]);
                     }
                     alpaka::syncBlockThreads(acc);
                 }
@@ -1805,33 +1799,12 @@ namespace lulesh_port_kernels
                 {
                     if(tid < 64)
                     {
-                        s_data[tid] = min(s_data[tid], s_data[tid + 64]);
+                        s_data[tid] = FMIN(acc,s_data[tid], s_data[tid + 64]);
                     }
                     alpaka::syncBlockThreads(acc);
                 }
-                if(tid < 32)
-                {
-                    s_data[tid] = min(s_data[tid], s_data[tid + 32]);
-                }
-                if(tid < 16)
-                {
-                    s_data[tid] = min(s_data[tid], s_data[tid + 16]);
-                }
-                if(tid < 8)
-                {
-                    s_data[tid] = min(s_data[tid], s_data[tid + 8]);
-                }
-                if(tid < 4)
-                {
-                    s_data[tid] = min(s_data[tid], s_data[tid + 4]);
-                }
-                if(tid < 2)
-                {
-                    s_data[tid] = min(s_data[tid], s_data[tid + 2]);
-                }
-                if(tid < 1)
-                {
-                    s_data[tid] = min(s_data[tid], s_data[tid + 1]);
+                for(int i=0;i<6;i++){
+                    if(tid < array[i])s_data[tid] = FMIN(acc,s_data[tid], s_data[tid + array[i]]);
                 }
                 if(tid < 1)
                 {
@@ -1854,7 +1827,7 @@ namespace lulesh_port_kernels
                 {
                     if(tid < 512)
                     {
-                        s_data[tid] = min(s_data[tid], s_data[tid + 512]);
+                        s_data[tid] = FMIN(acc,s_data[tid], s_data[tid + 512]);
                     }
                     alpaka::syncBlockThreads(acc);
                 }
@@ -1862,7 +1835,7 @@ namespace lulesh_port_kernels
                 {
                     if(tid < 256)
                     {
-                        s_data[tid] = min(s_data[tid], s_data[tid + 256]);
+                        s_data[tid] = FMIN(acc,s_data[tid], s_data[tid + 256]);
                     }
                     alpaka::syncBlockThreads(acc);
                 }
@@ -1870,7 +1843,7 @@ namespace lulesh_port_kernels
                 {
                     if(tid < 128)
                     {
-                        s_data[tid] = min(s_data[tid], s_data[tid + 128]);
+                        s_data[tid] = FMIN(acc,s_data[tid], s_data[tid + 128]);
                     }
                     alpaka::syncBlockThreads(acc);
                 }
@@ -1878,33 +1851,13 @@ namespace lulesh_port_kernels
                 {
                     if(tid < 64)
                     {
-                        s_data[tid] = min(s_data[tid], s_data[tid + 64]);
+                        s_data[tid] = FMIN(acc,s_data[tid], s_data[tid + 64]);
                     }
                     alpaka::syncBlockThreads(acc);
                 }
-                if(tid < 32)
-                {
-                    s_data[tid] = min(s_data[tid], s_data[tid + 32]);
-                }
-                if(tid < 16)
-                {
-                    s_data[tid] = min(s_data[tid], s_data[tid + 16]);
-                }
-                if(tid < 8)
-                {
-                    s_data[tid] = min(s_data[tid], s_data[tid + 8]);
-                }
-                if(tid < 4)
-                {
-                    s_data[tid] = min(s_data[tid], s_data[tid + 4]);
-                }
-                if(tid < 2)
-                {
-                    s_data[tid] = min(s_data[tid], s_data[tid + 2]);
-                }
-                if(tid < 1)
-                {
-                    s_data[tid] = min(s_data[tid], s_data[tid + 1]);
+
+                for(int i=0;i<6;i++){
+                    if(tid < array[i])s_data[tid] = FMIN(acc,s_data[tid], s_data[tid + array[i]]);
                 }
                 if(tid < 1)
                 {
@@ -1981,7 +1934,7 @@ namespace lulesh_port_kernels
                 // Computing dt_hydro
                 if(vdov_tmp != Real_t(0.))
                 {
-                    Real_t dtdvov = dvovmax / (FABS(vdov_tmp) + Real_t(1.e-20));
+                    Real_t dtdvov = dvovmax / (FABS(acc,vdov_tmp) + Real_t(1.e-20));
                     if(dthydro > dtdvov)
                     {
                         dthydro = dtdvov;
@@ -1997,7 +1950,7 @@ namespace lulesh_port_kernels
                 Real_t dtf = ss_tmp * ss_tmp;
 
                 dtf += ((vdov_tmp < 0.) ? qqc2 * area_tmp * area_tmp * vdov_tmp * vdov_tmp : 0.);
-                dtf = area_tmp / SQRT(dtf);
+                dtf = area_tmp / SQRT(acc,dtf);
 
                 /* determine minimum timestep with its corresponding elem */
                 if(vdov_tmp != Real_t(0.) && dtf < dtcourant)
@@ -2022,8 +1975,8 @@ namespace lulesh_port_kernels
             {
                 if(tid < 512)
                 {
-                    s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 512]);
-                    s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 512]);
+                    s_mindthydro[tid] = FMIN(acc,s_mindthydro[tid], s_mindthydro[tid + 512]);
+                    s_mindtcourant[tid] = FMIN(acc,s_mindtcourant[tid], s_mindtcourant[tid + 512]);
                 }
                 alpaka::syncBlockThreads(acc);
             }
@@ -2032,8 +1985,8 @@ namespace lulesh_port_kernels
             {
                 if(tid < 256)
                 {
-                    s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 256]);
-                    s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 256]);
+                    s_mindthydro[tid] = FMIN(acc,s_mindthydro[tid], s_mindthydro[tid + 256]);
+                    s_mindtcourant[tid] = FMIN(acc,s_mindtcourant[tid], s_mindtcourant[tid + 256]);
                 }
                 alpaka::syncBlockThreads(acc);
             }
@@ -2042,8 +1995,8 @@ namespace lulesh_port_kernels
             {
                 if(tid < 128)
                 {
-                    s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 128]);
-                    s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 128]);
+                    s_mindthydro[tid] = FMIN(acc,s_mindthydro[tid], s_mindthydro[tid + 128]);
+                    s_mindtcourant[tid] = FMIN(acc,s_mindtcourant[tid], s_mindtcourant[tid + 128]);
                 }
                 alpaka::syncBlockThreads(acc);
             }
@@ -2052,42 +2005,42 @@ namespace lulesh_port_kernels
             {
                 if(tid < 64)
                 {
-                    s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 64]);
-                    s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 64]);
+                    s_mindthydro[tid] = FMIN(acc,s_mindthydro[tid], s_mindthydro[tid + 64]);
+                    s_mindtcourant[tid] = FMIN(acc,s_mindtcourant[tid], s_mindtcourant[tid + 64]);
                 }
                 alpaka::syncBlockThreads(acc);
             }
 
             if(tid < 32)
             {
-                s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 32]);
-                s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 32]);
+                s_mindthydro[tid] = FMIN(acc,s_mindthydro[tid], s_mindthydro[tid + 32]);
+                s_mindtcourant[tid] = FMIN(acc,s_mindtcourant[tid], s_mindtcourant[tid + 32]);
             }
 
             if(tid < 16)
             {
-                s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 16]);
-                s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 16]);
+                s_mindthydro[tid] = FMIN(acc,s_mindthydro[tid], s_mindthydro[tid + 16]);
+                s_mindtcourant[tid] = FMIN(acc,s_mindtcourant[tid], s_mindtcourant[tid + 16]);
             }
             if(tid < 8)
             {
-                s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 8]);
-                s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 8]);
+                s_mindthydro[tid] = FMIN(acc,s_mindthydro[tid], s_mindthydro[tid + 8]);
+                s_mindtcourant[tid] = min(acc,s_mindtcourant[tid], s_mindtcourant[tid + 8]);
             }
             if(tid < 4)
             {
-                s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 4]);
-                s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 4]);
+                s_mindthydro[tid] = FMIN(acc,s_mindthydro[tid], s_mindthydro[tid + 4]);
+                s_mindtcourant[tid] = FMIN(acc,s_mindtcourant[tid], s_mindtcourant[tid + 4]);
             }
             if(tid < 2)
             {
-                s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 2]);
-                s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 2]);
+                s_mindthydro[tid] = FMIN(acc,s_mindthydro[tid], s_mindthydro[tid + 2]);
+                s_mindtcourant[tid] = FMIN(acc,s_mindtcourant[tid], s_mindtcourant[tid + 2]);
             }
             if(tid < 1)
             {
-                s_mindthydro[tid] = min(s_mindthydro[tid], s_mindthydro[tid + 1]);
-                s_mindtcourant[tid] = min(s_mindtcourant[tid], s_mindtcourant[tid + 1]);
+                s_mindthydro[tid] = FMIN(acc,s_mindthydro[tid], s_mindthydro[tid + 1]);
+                s_mindtcourant[tid] = FMIN(acc,s_mindtcourant[tid], s_mindtcourant[tid + 1]);
             }
 
             // Store in global memory
@@ -2138,8 +2091,6 @@ namespace lulesh_port_kernels
             Index_t const numReg) const -> void
         {
             Index_t i = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc)[0];
-            // Index_t i = static_cast<Index_t>(linearizedGlobalThreadIdx[0u]);
-
             Real_t e_old, delvc, p_old, q_old, e_temp, delvc_temp, p_temp, q_temp;
             Real_t compression, compHalfStep;
             Real_t qq_old, ql_old, qq_temp, ql_temp, work;
@@ -2191,7 +2142,7 @@ namespace lulesh_port_kernels
                             compHalfStep = Real_t(0.);
                         }
                     }
-                    lulesh_port_kernels::CalcEnergyForElems_device(
+                    lulesh_port_kernels::CalcEnergyForElems_device(acc,
                         p_new,
                         e_new,
                         q_new,
@@ -2222,6 +2173,7 @@ namespace lulesh_port_kernels
                 q[zidx] = q_new;
 
                 lulesh_port_kernels::CalcSoundSpeedForElems_device(
+                    acc,
                     vnewc,
                     rho0,
                     e_new,
@@ -2232,7 +2184,7 @@ namespace lulesh_port_kernels
                     length,
                     ss,
                     zidx);
-                lulesh_port_kernels::UpdateVolumesForElems_device(length, v_cut, vnew, v, zidx);
+                lulesh_port_kernels::UpdateVolumesForElems_device(acc,length, v_cut, vnew, v, zidx);
             }
         };
     };
@@ -2303,11 +2255,11 @@ namespace lulesh_port_kernels
                 ydtmp = yd[i] + ydd[i] * dt;
                 zdtmp = zd[i] + zdd[i] * dt;
 
-                if(FABS(xdtmp) < u_cut)
+                if(FABS(acc,xdtmp) < u_cut)
                     xdtmp = 0.0;
-                if(FABS(ydtmp) < u_cut)
+                if(FABS(acc,ydtmp) < u_cut)
                     ydtmp = 0.0;
-                if(FABS(zdtmp) < u_cut)
+                if(FABS(acc,zdtmp) < u_cut)
                     zdtmp = 0.0;
 
                 x[i] += xdtmp * dt;
@@ -2611,26 +2563,26 @@ namespace lulesh_port_kernels
                     zn[i] = z[n[i]];
                 }
 
-                Real_t volume13 = CBRT(det);
+                Real_t volume13 = CBRT(acc,det);
                 Real_t coefficient2 = -hourg * Real_t(0.01) * ss1 * mass1 / volume13;
                 /*************************************************/
                 /*    compute the volume derivatives             */
                 /*************************************************/
-                lulesh_port_kernels::CalcElemVolumeDerivative(dvdxn, dvdyn, dvdzn, xn, yn, zn);
+                lulesh_port_kernels::CalcElemVolumeDerivative(dvdxn, dvdyn, dvdzn, xn, yn, zn);//no acc
 
                 /*************************************************/
                 /*    compute the hourglass modes                */
                 /*************************************************/
-                lulesh_port_kernels::CalcHourglassModes(xn, yn, zn, dvdxn, dvdyn, dvdzn, hourgam, volinv);
+                lulesh_port_kernels::CalcHourglassModes(xn, yn, zn, dvdxn, dvdyn, dvdzn, hourgam, volinv); //no acc
 
                 /*************************************************/
                 /*    CalcStressForElems                         */
                 /*************************************************/
                 Real_t B[3][8];
 
-                lulesh_port_kernels::CalcElemShapeFunctionDerivatives(xn, yn, zn, B, &det);
+                lulesh_port_kernels::CalcElemShapeFunctionDerivatives(xn, yn, zn, B, &det);//no acc
 
-                lulesh_port_kernels::CalcElemNodeNormals(B[0], B[1], B[2], xn, yn, zn);
+                lulesh_port_kernels::CalcElemNodeNormals(B[0], B[1], B[2], xn, yn, zn); //no acc
 
                 // Check for bad volume
                 if(det < 0.)
@@ -2863,7 +2815,7 @@ namespace lulesh_port_kernels
 
                 delv[k] = relativeVolume - v[k];
                 // set characteristic length
-                arealg[k] = lulesh_port_kernels::CalcElemCharacteristicLength(x_local, y_local, z_local, volume);
+                arealg[k] = lulesh_port_kernels::CalcElemCharacteristicLength(acc, x_local, y_local, z_local, volume);
 
                 // get nodal velocities from global array and copy into local arrays.
                 // #pragma unroll
@@ -2920,6 +2872,7 @@ namespace lulesh_port_kernels
                 }
 
                 lulesh_port_kernels::CalcMonoGradient(
+                    acc,
                     x_local,
                     y_local,
                     z_local,

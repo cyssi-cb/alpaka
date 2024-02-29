@@ -6,7 +6,7 @@
 namespace alpaka_utils
 {
     /*
-        Executes a blocking kernel object (class or struct) on the
+       Executes a blocking kernel object (class or struct) on the
        alpaka::ExampleDefaultAcc the workdiv can be specified through the
        threadsPerGrid parameter Executes a kernel object (class or struct) on the
        alpaka::ExampleDefaultAcc the workdiv can be specified through the
@@ -15,6 +15,25 @@ namespace alpaka_utils
     // using Acc = alpaka::ExampleDefaultAcc<alpaka::DimInt<1>, std::size_t>;
     // using Queue_ =alpaka::Queue<Acc, alpaka::Blocking>
     // bool set=false;
+    template<typename Acc>
+    class Alpaka_Domain{
+        using Queue_ = alpaka::Queue<Acc, alpaka::Blocking>;
+        private:
+            std::shared_ptr<Queue_> queue;
+            std::shared_ptr<alpaka::Dev<Acc>> dev;
+        public:
+
+
+            Alpaka_Domain(){
+                dev = std::make_shared<alpaka::Dev<Acc>>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0));
+                queue=std::make_shared<Queue_>(*dev);
+            };
+            Queue_ & getQueue(){
+                return *queue;
+            }
+
+
+    };
     template<typename Dim, typename Idx, typename kernel, typename... Args>
     static int alpakaExecuteBaseKernel(
         kernel const& obj,
@@ -23,15 +42,10 @@ namespace alpaka_utils
         Args&&... args)
     {
         // using Acc = alpaka::ExampleDefaultAcc<alpaka::DimInt<1>, Idx>;
-        using Acc = alpaka::AccGpuCudaRt<alpaka::DimInt<1>, Idx>;
+        using Acc = alpaka::ExampleDefaultAcc<alpaka::DimInt<1>, Idx>;
+        //define accelerator, queue and device
+        static Alpaka_Domain<Acc> dom = Alpaka_Domain<Acc>();
 
-        using Vec2_ = alpaka::Vec<alpaka::DimInt<2>, std::size_t>;
-        using Queue_ = alpaka::Queue<Acc, alpaka::Blocking>;
-
-        auto const devAcc = std::make_shared<alpaka::Dev<Acc>>(alpaka::getDevByIdx(alpaka::Platform<Acc>{}, 0));
-
-        Queue_ queue(*devAcc);
-        auto const elementsPerThread = alpaka::Vec<Dim, Idx>::all(static_cast<Idx>(1));
         using WorkDiv = alpaka::WorkDivMembers<alpaka::DimInt<1>, Idx>;
         auto const workDiv = WorkDiv{Idx(threadsPerGrid[1u]), Idx(threadsPerGrid[0u]), Idx(1)};
         /*WorkDiv const workDiv = alpaka::getValidWorkDiv<Acc>(
@@ -42,9 +56,10 @@ namespace alpaka_utils
             alpaka::GridBlockExtentSubDivRestrictions::Unrestricted);*/
         // alpaka::trait::GetAccDevProps<alpaka::Dev<Acc>>(*devAcc);
         auto const taskKernel = alpaka::createTaskKernel<Acc>(workDiv, obj, std::forward<Args>(args)...);
-        alpaka::enqueue(queue, taskKernel);
-        alpaka::wait(queue);
+        alpaka::enqueue(dom.getQueue(), taskKernel);
+        alpaka::wait(dom.getQueue());
         return EXIT_SUCCESS;
+
     };
 
 } // namespace alpaka_utils

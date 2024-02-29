@@ -14,8 +14,8 @@ for current_value in "${values[@]}"; do
     touch "$orig_output_file"
     touch "$alpaka_output_file"
     # Run the command with the current value and save output
-    ./lulesh_orig/cuda/build/lulesh2.0 -s "$current_value" 0 100 > "$orig_output_file"
-    ./build/lulesh/cuda/lulesh -s "$current_value" 0 100 > "$alpaka_output_file"
+    ./build/lulesh_orig/cuda/lulesh_orig -s "$current_value" 0 100 > "$orig_output_file"
+    ./build/alpaka_lulesh/cuda/alpaka_lulesh -s "$current_value" 0 100 > "$alpaka_output_file"
     # Extract pattern using regex and append to CSV
     pattern1=$(grep -oP 'Elapsed time\s*=\s*\K[0-9]+(\.[0-9]+)?' "$orig_output_file")
     pattern2=$(grep -oP 'Elapsed time\s*=\s*\K[0-9]+(\.[0-9]+)?' "$alpaka_output_file")

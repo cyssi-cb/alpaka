@@ -1,4 +1,4 @@
-set(_TARGET_NAME lulesh)
+set(_TARGET_NAME alpaka_lulesh)
 
 project(${_TARGET_NAME} LANGUAGES CUDA CXX)
 
