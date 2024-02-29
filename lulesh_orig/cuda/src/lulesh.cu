@@ -4558,6 +4558,16 @@ __device__
         }
         else
         {
+            /* clock_t start = clock();
+                clock_t now;
+                for (;;) {
+                now = clock();
+                clock_t cycles = now > start ? now - start : now + (0xffffffff - start);
+                if (cycles >= 10000) {
+                break;
+                }
+                }
+                ssc = ssc/2;*/
             ssc = SQRT(ssc);
         }
 
@@ -4595,6 +4605,7 @@ __device__
         }
         else
         {
+
             ssc = SQRT(ssc);
         }
 
@@ -4625,7 +4636,16 @@ __device__
             ssc = Real_t(.3333333e-18);
         }
         else
-        {
+        {        /*   clock_t start = clock();
+                clock_t now;
+                for (;;) {
+                now = clock();
+                clock_t cycles = now > start ? now - start : now + (0xffffffff - start);
+                if (cycles >= 10000) {
+                break;
+                }
+                }
+                ssc = ssc/2;*/
             ssc = SQRT(ssc);
         }
 

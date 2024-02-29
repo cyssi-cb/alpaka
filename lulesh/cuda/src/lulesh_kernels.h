@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include <iostream>
+#define CUDA_SQRT
 #define Real_t double
 #define Real_tp double*
 
@@ -52,19 +53,41 @@ namespace lulesh_port_kernels
 
     using Index_t = std::int32_t;
     using Int_t = std::int32_t;
-
+    template<typename T>
+    ALPAKA_FN_ACC auto SQRT(T x) -> T
+    {
+        #ifdef GPU_ALP_SQRT
+            return alpaka::math::sqrt(alpaka::math::SqrtUniformCudaHipBuiltIn(), x);
+            
+        #else 
+        #ifdef CUDA_SQRT
+            return alpaka::math::sqrt(alpaka::math::ConceptMathSqrt(), x);
+        #else
+            return alpaka::math::sqrt(alpaka::math::SqrtStdLib(), x);
+        #endif
+        #endif
+    };
     // this needs adjustment when using float
-    ALPAKA_FN_ACC auto FABS(Real_t arg1)
+    template<typename T>
+    ALPAKA_FN_ACC auto FABS(const T arg1) -> T
     {
-        if(arg1 < 0)
-            return (arg1 * (-1));
-        else
-            return arg1;
+        return alpaka::math::abs(alpaka::math::AbsUniformCudaHipBuiltIn(),arg1);
     }
-
-    ALPAKA_FN_ACC auto FMAX(Real_t arg1, Real_t arg2) -> Real_t
+    template<typename T>
+    ALPAKA_FN_ACC auto FMAX(const T arg1,const T arg2) -> T
     {
-        return fmax(arg1, arg2);
+        return alpaka::math::max(alpaka::math::MaxUniformCudaHipBuiltIn(), arg1,arg2);
+    }
+    
+    template<typename T>
+    ALPAKA_FN_ACC auto CBRT(const T arg1) -> T
+    {
+        return alpaka::math::cbrt(alpaka::math::FmaUniformCudaHipBuiltIn(), arg1);
+    }
+    template<typename T>
+    ALPAKA_FN_ACC auto FMA(T arg1,T arg2, T arg3) -> T
+    {
+        return alpaka::math::fma(alpaka::math::FmaUniformCudaHipBuiltIn(), arg1,arg2,arg3);
     }
 
     ALPAKA_FN_ACC auto AreaFace(
@@ -183,7 +206,7 @@ namespace lulesh_port_kernels
         ay = dzi * dxj - dxi * dzj;
         az = dxi * dyj - dyi * dxj;
 
-        *delx_zeta = vol / sqrt(ax * ax + ay * ay + az * az + ptiny);
+        *delx_zeta = vol / SQRT(ax * ax + ay * ay + az * az + ptiny);
 
         ax *= norm;
         ay *= norm;
@@ -201,7 +224,7 @@ namespace lulesh_port_kernels
         ay = dzj * dxk - dxj * dzk;
         az = dxj * dyk - dyj * dxk;
 
-        *delx_xi = vol / sqrt(ax * ax + ay * ay + az * az + ptiny);
+        *delx_xi = vol / SQRT(ax * ax + ay * ay + az * az + ptiny);
 
         ax *= norm;
         ay *= norm;
@@ -219,7 +242,7 @@ namespace lulesh_port_kernels
         ay = dzk * dxi - dxk * dzi;
         az = dxk * dyi - dyk * dxi;
 
-        *delx_eta = vol / sqrt(ax * ax + ay * ay + az * az + ptiny);
+        *delx_eta = vol / SQRT(ax * ax + ay * ay + az * az + ptiny);
 
         ax *= norm;
         ay *= norm;
@@ -260,7 +283,7 @@ namespace lulesh_port_kernels
         a = lulesh_port_kernels::AreaFace(x[3], x[0], x[4], x[7], y[3], y[0], y[4], y[7], z[3], z[0], z[4], z[7]);
         charLength = lulesh_port_kernels::FMAX(a, charLength);
 
-        charLength = Real_t(4.0) * volume / sqrt(charLength);
+        charLength = Real_t(4.0) * volume / SQRT(charLength);
 
         return charLength;
     }
@@ -922,14 +945,15 @@ namespace lulesh_port_kernels
         Real_t* ss,
         Index_t iz)
     {
-        Real_t ssTmp = (pbvc * enewc + vnewc * vnewc * bvc * pnewc) / rho0;
+        /Real_t ssTmp=(pbvc * enewc + vnewc * vnewc * bvc * pnewc) / rho0
+        //Real_t ssTmp = FMA(pbvc,enewc,vnewc * vnewc * bvc * pnewc)/ rho0;
         if(ssTmp <= Real_t(.1111111e-36))
         {
             ssTmp = Real_t(.3333333e-18);
         }
         else
         {
-            ssTmp = sqrt(ssTmp);
+            ssTmp = SQRT(ssTmp);
         }
         ss[iz] = ssTmp;
     }
@@ -992,8 +1016,9 @@ namespace lulesh_port_kernels
     {
         Real_t const sixth = Real_t(1.0) / Real_t(6.0);
         Real_t pHalfStep;
-
         e_new = e_old - Real_t(0.5) * delvc * (p_old + q_old) + Real_t(0.5) * work;
+        //e_new = e_old - FMA(Real_t(0.5) * delvc,p_old + q_old,Real_t(0.5) * work);
+        //e_new = e_old - Real_t(0.5) * delvc * (p_old + q_old) + Real_t(0.5) * work;
 
         if(e_new < emin)
         {
@@ -1010,6 +1035,7 @@ namespace lulesh_port_kernels
         }
         else
         {
+            //Real_t ssc=FMA(vhalf * vhalf,bvc * pHalfStep,pbvc * e_new)/rho0;
             Real_t ssc = (pbvc * e_new + vhalf * vhalf * bvc * pHalfStep) / rho0;
 
             if(ssc <= Real_t(.1111111e-36))
@@ -1018,12 +1044,21 @@ namespace lulesh_port_kernels
             }
             else
             {
-                ssc = sqrt(ssc);
+                /*clock_t start_clock = clock();
+                clock_t clock_offset = 0;
+
+                clock_t clock_count=10000;
+                while (clock_offset < clock_count)
+                {
+                    clock_offset = clock() - start_clock;
+                }
+                ssc = ssc/2;*/
+                ssc = SQRT(ssc);
             }
 
             q_new = (ssc * ql + qq);
         }
-
+        //e_new+=FMA(Real_t(0.5) * delvc,Real_t(3.0) * (p_old + q_old), Real_t(-4.0) * (pHalfStep + q_new));
         e_new = e_new + Real_t(0.5) * delvc * (Real_t(3.0) * (p_old + q_old) - Real_t(4.0) * (pHalfStep + q_new));
 
         e_new += Real_t(0.5) * work;
@@ -1046,7 +1081,8 @@ namespace lulesh_port_kernels
             q_tilde = Real_t(0.);
         }
         else
-        {
+        {   
+            //Real_t ssc=FMA(vnewc * vnewc,bvc * p_new,pbvc * e_new)/rho0;
             Real_t ssc = (pbvc * e_new + vnewc * vnewc * bvc * p_new) / rho0;
 
             if(ssc <= Real_t(.1111111e-36))
@@ -1055,7 +1091,16 @@ namespace lulesh_port_kernels
             }
             else
             {
-                ssc = sqrt(ssc);
+                /*clock_t start_clock = clock();
+                clock_t clock_offset = 0;
+
+                clock_t clock_count=10000;
+                while (clock_offset < clock_count)
+                {
+                    clock_offset = clock() - start_clock;
+                }
+                ssc = ssc/2;*/
+                ssc = SQRT(ssc);
             }
 
             q_tilde = (ssc * ql + qq);
@@ -1067,6 +1112,7 @@ namespace lulesh_port_kernels
 
         if(FABS(e_new) < e_cut)
         {
+
             e_new = Real_t(0.);
         }
         if(e_new < emin)
@@ -1078,6 +1124,7 @@ namespace lulesh_port_kernels
 
         if(delvc <= Real_t(0.))
         {
+            //Real_t ssc=FMA(vnewc * vnewc,bvc * p_new,pbvc * e_new)/rho0;
             Real_t ssc = (pbvc * e_new + vnewc * vnewc * bvc * p_new) / rho0;
 
             if(ssc <= Real_t(.1111111e-36))
@@ -1086,10 +1133,19 @@ namespace lulesh_port_kernels
             }
             else
             {
-                ssc = sqrt(ssc);
+                /*clock_t start_clock = clock();
+                clock_t clock_offset = 0;
+
+                clock_t clock_count=10000;
+                while (clock_offset < clock_count)
+                {
+                    clock_offset = clock() - start_clock;
+                }
+                ssc = ssc/2;*/
+                ssc = SQRT(ssc);
             }
 
-            q_new = (ssc * ql + qq);
+            q_new = FMA(ssc,ql,qq);
 
             if(FABS(q_new) < q_cut)
                 q_new = Real_t(0.);
@@ -1941,7 +1997,7 @@ namespace lulesh_port_kernels
                 Real_t dtf = ss_tmp * ss_tmp;
 
                 dtf += ((vdov_tmp < 0.) ? qqc2 * area_tmp * area_tmp * vdov_tmp * vdov_tmp : 0.);
-                dtf = area_tmp / sqrt(dtf);
+                dtf = area_tmp / SQRT(dtf);
 
                 /* determine minimum timestep with its corresponding elem */
                 if(vdov_tmp != Real_t(0.) && dtf < dtcourant)
@@ -2555,7 +2611,7 @@ namespace lulesh_port_kernels
                     zn[i] = z[n[i]];
                 }
 
-                Real_t volume13 = cbrt(det);
+                Real_t volume13 = CBRT(det);
                 Real_t coefficient2 = -hourg * Real_t(0.01) * ss1 * mass1 / volume13;
                 /*************************************************/
                 /*    compute the volume derivatives             */
