@@ -35,7 +35,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # Options and Variants
 
 option(alpaka_BUILD_EXAMPLES "Build the examples" OFF)
-option(alpaka_BUILD_LULESH "Build Lulesh" OFF)
+option(alpaka_BUILD_ALPAKA_LULESH "Build Lulesh" OFF)
 option(alpaka_BUILD_LULESH_ORIG "Build Lulesh" OFF)
 # Enable the test infrastructure only if alpaka is the top-level project
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
@@ -81,7 +81,7 @@ set(_alpaka_INCLUDE_DIRECTORY "${_alpaka_ROOT_DIR}/include")
 set(_alpaka_SUFFIXED_INCLUDE_DIR "${_alpaka_INCLUDE_DIRECTORY}/alpaka")
 
 # the sequential accelerator is required for the tests and examples
-if(alpaka_BUILD_EXAMPLES OR BUILD_TESTING OR alpaka_BUILD_LULESH OR alpaka_BUILD_LULESH_ORIG)
+if(alpaka_BUILD_EXAMPLES OR BUILD_TESTING OR alpaka_BUILD_ALPAKA_LULESH OR alpaka_BUILD_LULESH_ORIG)
   if (NOT (alpaka_ACC_GPU_CUDA_ONLY_MODE OR alpaka_ACC_GPU_HIP_ONLY_MODE))
     if (NOT DEFINED alpaka_ACC_CPU_B_SEQ_T_SEQ_ENABLE)
       option(alpaka_ACC_CPU_B_SEQ_T_SEQ_ENABLE "enable alpaka serial accelerator" ON)
@@ -144,8 +144,8 @@ endif()
 # Add subdirectories
 
 add_subdirectory(thirdParty)
-if(alpaka_BUILD_LULESH)
-    add_subdirectory("lulesh/")
+if(alpaka_BUILD_ALPAKA_LULESH)
+    add_subdirectory("alpaka_lulesh/")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 endif()
 if(alpaka_BUILD_LULESH_ORIG)
